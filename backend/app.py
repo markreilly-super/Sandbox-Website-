@@ -8,10 +8,23 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration - Using your provided Test Credentials
-API_KEY = "sk_test_MRX-NlE8dd3AWxan6laIY-Jr3sZmFi6zXLtCCqZ-"
-INITIATOR_ID = "eb143504-9d73-4ae9-b467-b71e005b3198"
+# Nutmeg account API Key and Payment Initiator ID
+# Secret API Key - sk_test_MRX-NlE8dd3AWxan6laIY-Jr3sZmFi6zXLtCCqZ-
+# Payment Initiator ID - eb143504-9d73-4ae9-b467-b71e005b3198
+API_KEY = "sk_test_slW4ny3ac-I-X-73htZ8gShcYM6o4fBZpv5y5xSn"
+INITIATOR_ID = "db0d5525-0b17-4acf-b4f5-8c47405e7079"
+
+#Staging account Mark Reilly Limited 
+#API_KEY = "sk_stag_MGxPoxlNNlKJ1OTzFvHnXKUv62SRMamHvZhmdFrG"
+#INITIATOR_ID = "39733f1a-8a06-47e2-9fdb-38c5c78662eb"
+#Secret - sk_stag_MGxPoxlNNlKJ1OTzFvHnXKUv62SRMamHvZhmdFrG
+#Payment Init - 39733f1a-8a06-47e2-9fdb-38c5c78662eb
+#Brand - 60202016-cada-4832-b792-ff3710b5c4ce
+#Public - pk_stag_KGQ2yHCbOPDg8YMi_22SYfis4gSay7aPXzWe5UzH
+
+
 # Note: Using the test subdomain for all calls
-BASE_URL = "https://api.test.superpayments.com/2025-06-01/checkout-sessions"
+BASE_URL = "https://api.test.superpayments.com/2025-11-01/checkout-sessions"
 
 @app.route('/checkout-sessions', methods=['POST'])
 def create_checkout():
@@ -48,6 +61,8 @@ def proceed_checkout(session_id):
     """
     # Constructing the URL: https://api.test.superpayments.com/2025-06-01/checkout-sessions/{id}/proceed
     proceed_url = f"{BASE_URL}/{session_id}/proceed"
+
+    print(f"Proceed URL: {proceed_url}")
     
     headers = {
         'Authorization': API_KEY,
@@ -57,7 +72,7 @@ def proceed_checkout(session_id):
     frontend_data = request.json
     
     payload = {
-        "amount": frontend_data.get("amount", 1000), # Default to 1000 (e.g. £10.00) if not sent
+        "amount": frontend_data.get("amount", 5000), # Default to 5000 (e.g. £50.00) if not sent
         "cancelUrl": "http://localhost:3000/cancel",
         "failureUrl": "http://localhost:3000/failure",
         "successUrl": "http://localhost:3000/success",
