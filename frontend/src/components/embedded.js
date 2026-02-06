@@ -2,33 +2,38 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const GLOBAL_EVENTS = {
   DISPLAY_BY_PHONE: 'superpayments:displaySignIn',
-  COMPONENT_READY: 'superpayments:ready',
 };
 
 const CheckoutPage = () => {
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Controls the "Place Order" button visibility based on the global SDK object
+  const [isSdkReady, setIsSdkReady] = useState(false); 
+
+  const [sdkConfig, setSdkConfig] = useState({
+    paymentMethodsOrder: 'BNPL,CARD,OPEN_BANKING',
+    preSelectedPaymentMethod: 'CARD',
+    title: 'Secure Checkout',
+    subtitle: 'Pay with Super and earn cash rewards'
+  });
+
   const [billingDetails, setBillingDetails] = useState({
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'johnsmith@hotmail.com',
+    firstName: 'Mark',
+    lastName: 'Reilly',
+    email: 'test@hotmail.com',
     phoneNumber: '7462569556',
     street: 'London Street',
     country: 'United Kingdom',
     postcode: 'SW1A 1AA'
   });
 
-  // Ref to track if the initial sync has occurred to avoid redundant triggers
   const initialSyncDone = useRef(false);
 
-  /**
-   * CORE LOGIC: Injects the phone number into the SDK via CustomEvent.
-   * Uses 'composed: true' to cross the Shadow DOM boundary.
-   */
   const triggerCustomPhoneNumberEvent = useCallback((phoneNumber) => {
     const superCheckoutElement = document.querySelector('super-checkout');
-
     if (superCheckoutElement && phoneNumber) {
       const event = new CustomEvent(GLOBAL_EVENTS.DISPLAY_BY_PHONE, {
         bubbles: true,
@@ -37,154 +42,177 @@ const CheckoutPage = () => {
         detail: { phoneNumber }
       });
       document.dispatchEvent(event);
-      console.log('📡 Phone number injected:', phoneNumber);
+      console.log('📡 Phone number synced:', phoneNumber);
     }
   }, []);
 
   /**
-   * 1. WAIT FOR READY STATE & INITIAL SYNC
-   * Listens for the SDK's internal 'ready' signal before firing the first injection.
+   * REFINED READINESS CHECK
+   * Instead of probing the Shadow DOM, we monitor the global window object.
    */
   useEffect(() => {
-    const handleReady = () => {
-      console.log('✅ SDK Signal: READY');
-      if (!initialSyncDone.current) {
-        triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
-        initialSyncDone.current = true;
-      }
-    };
-
-    document.addEventListener(GLOBAL_EVENTS.COMPONENT_READY, handleReady);
-
-    // Fallback: If component is already in DOM, sync immediately
-    if (document.querySelector('super-checkout') && !initialSyncDone.current) {
-      triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
-      initialSyncDone.current = true;
+    const savedConfig = localStorage.getItem('sdk_config');
+    if (savedConfig) {
+      setSdkConfig(JSON.parse(savedConfig));
     }
 
-    return () => document.removeEventListener(GLOBAL_EVENTS.COMPONENT_READY, handleReady);
-  }, [billingDetails.phoneNumber, triggerCustomPhoneNumberEvent]);
+    const checkInterval = setInterval(() => {
+      // Logic suggested by engineer: Check for the submit method on the global object
+      const ready = Boolean(window.superCheckout && window.superCheckout.submit);
 
-  /**
-   * 2. HANDLE SEQUENTIAL UPDATES
-   * Resets the SDK UI state (OTP panel -> Phone panel) before injecting a new number.
-   */
+      if (ready) {
+        console.log('✅ SDK submit method detected. Component is ready.');
+        setIsSdkReady(true);
+        
+        // Ensure initial phone sync happens once the SDK is ready
+        if (!initialSyncDone.current) {
+          triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
+          initialSyncDone.current = true;
+        }
+        clearInterval(checkInterval);
+      }
+    }, 500);
+
+    return () => clearInterval(checkInterval);
+  }, [triggerCustomPhoneNumberEvent, billingDetails.phoneNumber]);
+
   const handleSaveAndSync = useCallback(() => {
     setLoading(true);
     localStorage.setItem('billing_cache', JSON.stringify(billingDetails));
-
-    const superCheckout = document.querySelector('super-checkout');
     
-    // Reset internal SDK state if user is stuck on the OTP verification screen
+    const superCheckout = document.querySelector('super-checkout');
     if (superCheckout?.shadowRoot) {
       const editBtn = superCheckout.shadowRoot.querySelector('[data-testid="change-phone-number-button"]');
-      if (editBtn) {
-        editBtn.click(); // Triggers internal handleEditAndResetPhoneNumber logic
-        console.log('♻️ SDK UI Reset triggered');
-      }
+      if (editBtn) editBtn.click(); 
     }
 
-    // Short delay to allow the React state inside the Web Component to transition
     setTimeout(() => {
       triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
       setLoading(false);
     }, 200);
   }, [billingDetails, triggerCustomPhoneNumberEvent]);
 
-  // Initial Session Fetching
+  const handlePlaceOrder = async () => {
+    if (!window.superCheckout) return;
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      // SDK Submission using the method we just verified exists
+      const result = await window.superCheckout.submit({
+        customerInformation: {
+          firstName: billingDetails.firstName,
+          lastName: billingDetails.lastName,
+          email: billingDetails.email,
+          phoneNumber: billingDetails.phoneNumber,
+        },
+      });
+
+      if (result.status === 'FAILURE') {
+        setErrorMessage(result.errorMessage || 'Payment Failed');
+        setLoading(false);
+        return;
+      }
+
+      // Backend Proceed call
+      const response = await fetch(`http://localhost:5000/checkout-sessions/${checkoutSessionId}/proceed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: 12000,
+          email: billingDetails.email,
+          phone: billingDetails.phoneNumber,
+          externalReference: `ORDER_${Date.now()}`,
+        }),
+      });
+
+      const proceedData = await response.json();
+      if (proceedData.redirectUrl) {
+        window.location.href = proceedData.redirectUrl; 
+      }
+    } catch (err) {
+      setErrorMessage('Communication error with server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
-        const res = await fetch('http://localhost:5000/checkout-sessions', { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
+        const res = await fetch('http://localhost:5000/checkout-sessions', { method: 'POST' });
         const data = await res.json();
         if (data.checkoutSessionToken) {
           setSessionToken(data.checkoutSessionToken);
           setCheckoutSessionId(data.checkoutSessionId);
         }
-      } catch (e) {
-        console.error("Session failed to load");
-      }
+      } catch (e) { console.error("Session failed"); }
     };
     init();
   }, []);
 
+  const refreshKey = `${sessionToken}-${sdkConfig.paymentMethodsOrder}`;
+  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '50px', padding: '50px', maxWidth: '1300px', margin: '0 auto', fontFamily: 'Arial' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', padding: '40px', maxWidth: '1300px', margin: '0 auto', fontFamily: 'Arial' }}>
       
       {/* LEFT COLUMN: BILLING FORM */}
       <div>
         <h2 style={{ fontSize: '1.4rem', borderBottom: '2px solid #000', paddingBottom: '10px' }}>Billing Address</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
-          <input 
-            placeholder="First Name" 
-            style={inputStyle} 
-            value={billingDetails.firstName}
-            onChange={e => setBillingDetails({...billingDetails, firstName: e.target.value})} 
-          />
-          <input 
-            placeholder="Last Name" 
-            style={inputStyle} 
-            value={billingDetails.lastName}
-            onChange={e => setBillingDetails({...billingDetails, lastName: e.target.value})} 
-          />
-          <input 
-            placeholder="Email Address" 
-            style={{...inputStyle, gridColumn: 'span 2'}} 
-            value={billingDetails.email}
-            onChange={e => setBillingDetails({...billingDetails, email: e.target.value})} 
-          />
-          
-          <div style={{ gridColumn: 'span 2' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#444' }}>Phone Number (Syncs with Payment)</label>
-            <input 
-              placeholder="07462..." 
-              style={{...inputStyle, width: '100%', marginTop: '5px', border: '2px solid #000'}} 
-              value={billingDetails.phoneNumber}
-              onChange={e => setBillingDetails({...billingDetails, phoneNumber: e.target.value})} 
-            />
-          </div>
-
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '20px' }}>
+          <input placeholder="First Name" style={inputStyle} value={billingDetails.firstName} onChange={e => setBillingDetails({...billingDetails, firstName: e.target.value})} />
+          <input placeholder="Last Name" style={inputStyle} value={billingDetails.lastName} onChange={e => setBillingDetails({...billingDetails, lastName: e.target.value})} />
+          <input placeholder="Email" style={{...inputStyle, gridColumn: 'span 2'}} value={billingDetails.email} onChange={e => setBillingDetails({...billingDetails, email: e.target.value})} />
+          <input placeholder="Phone" style={{...inputStyle, gridColumn: 'span 2', border: '2px solid #000'}} value={billingDetails.phoneNumber} onChange={e => setBillingDetails({...billingDetails, phoneNumber: e.target.value})} />
           <input placeholder="Street" style={{...inputStyle, gridColumn: 'span 2'}} value={billingDetails.street} onChange={e => setBillingDetails({...billingDetails, street: e.target.value})} />
           <input placeholder="Postcode" style={inputStyle} value={billingDetails.postcode} onChange={e => setBillingDetails({...billingDetails, postcode: e.target.value})} />
           <select style={inputStyle} value={billingDetails.country} onChange={e => setBillingDetails({...billingDetails, country: e.target.value})}>
-            <option>United Kingdom</option>
+            <option value="United Kingdom">United Kingdom</option>
           </select>
         </div>
-
         <button 
           onClick={handleSaveAndSync}
-          disabled={loading}
-          style={{ width: '100%', marginTop: '30px', padding: '16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}
+          style={{ width: '100%', marginTop: '20px', padding: '16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
         >
-          {loading ? 'Saving & Syncing...' : 'Save Details & Apply Rewards'}
+          Save & Sync Details
         </button>
       </div>
 
-      {/* RIGHT COLUMN: SUPER PAYMENTS */}
-      <div style={{ backgroundColor: '#fcfcfc', padding: '30px', borderRadius: '16px', border: '1px solid #eee' }}>
+      {/* RIGHT COLUMN: SDK & CONDITIONAL BUTTON */}
+      <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #ddd' }}>
         <h2 style={{ fontSize: '1.4rem', marginBottom: '25px' }}>Payment</h2>
-        
         {sessionToken ? (
-          <div style={{ minHeight: '300px' }}>
+          <>
             <super-checkout 
-              key={sessionToken} 
+              key={refreshKey} 
               amount="12000" 
-              checkout-session-token={sessionToken} 
+              checkout-session-token={sessionToken}
+              title={sdkConfig.title}
+              subtitle={sdkConfig.subtitle}
+              payment-methods-order={sdkConfig.paymentMethodsOrder}
+              pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
             />
-          </div>
-        ) : (
-          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-            <p>Initializing secure payment gateway...</p>
-          </div>
-        )}
+
+            {/* BUTTON REVEALED VIA ENGINEER'S Boolean Check */}
+            {isSdkReady && (
+              <button 
+                onClick={handlePlaceOrder}
+                disabled={loading}
+                style={{ 
+                  width: '100%', marginTop: '25px', padding: '18px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Processing Order...' : 'Place Order — £120.00'}
+              </button>
+            )}
+            
+            {errorMessage && <p style={{ color: 'red', textAlign: 'center', marginTop: '10px' }}>{errorMessage}</p>}
+          </>
+        ) : <p>Initializing gateway...</p>}
       </div>
     </div>
   );
 };
-
-const inputStyle = { padding: '14px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '15px', width: '100%', boxSizing: 'border-box' };
 
 export default CheckoutPage;

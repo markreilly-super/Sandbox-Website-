@@ -5,6 +5,7 @@ import EmbeddedPage from './components/embedded';
 import MarketingPage from './components/marketing';
 import Success from './components/Redirects/success';
 import Failure from './components/Redirects/failure';
+import AccountPage from './components/account';
 
 const App = () => {
   useEffect(() => {
@@ -43,6 +44,7 @@ const App = () => {
         <Route path="/" element={<div style={{ padding: '40px' }}><h1>Portal Home</h1></div>} />
         <Route path="/embedded" element={<EmbeddedPage />} />
         <Route path="/marketing" element={<MarketingPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
       </Routes>

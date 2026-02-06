@@ -13,6 +13,7 @@ CORS(app)
 # Payment Initiator ID - eb143504-9d73-4ae9-b467-b71e005b3198
 API_KEY = "sk_test_slW4ny3ac-I-X-73htZ8gShcYM6o4fBZpv5y5xSn"
 INITIATOR_ID = "db0d5525-0b17-4acf-b4f5-8c47405e7079"
+BRAND_ID = "f6883e2a-c76b-4ac6-840e-09891f72132e"
 
 #Staging account Mark Reilly Limited 
 #API_KEY = "sk_stag_MGxPoxlNNlKJ1OTzFvHnXKUv62SRMamHvZhmdFrG"
@@ -93,6 +94,68 @@ def proceed_checkout(session_id):
 
     except Exception as e:
         print(f"Error in Step 4: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+
+# new endpoints for Off-Session Payments
+
+@app.route('/customers', methods=['POST'])
+def create_customer():
+    """Step 1: Create a permanent customer entity in Super Payments."""
+    headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
+    # Payload usually requires email and optionally a name or external ID
+    payload = {
+                "externalReference": "Customer_001",
+                "brandId": BRAND_ID,
+                "metadata": {
+                    "Name": "John SmithViaOffSession",
+                    }
+                }
+    try:
+        response = requests.post(f"{BASE_URL}/customers", headers=headers, json=payload)
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/payment-methods', methods=['POST'])
+def create_payment_method():
+    """Step 2: Initialize a payment method record for the customer."""
+    headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
+    payload = request.json # Must include customerId
+    try:
+        response = requests.post(f"{BASE_URL}/payment-methods", headers=headers, json=payload)
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/payment-methods/<pm_id>/setup-intents', methods=['POST'])
+def create_setup_intent(pm_id):
+    """Step 3: Create a Setup Intent to authorize saving the card."""
+    headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
+    try:
+        # This returns the sessionToken needed for the <super-checkout> component
+        response = requests.post(f"{BASE_URL}/payment-methods/{pm_id}/setup-intents", headers=headers)
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/create-off-session-payment', methods=['POST'])
+def off_session_payment():
+    """Step 6: Charge the saved card when the user is NOT present."""
+    headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
+    frontend_data = request.json
+    
+    payload = {
+        "amount": frontend_data.get("amount"),
+        "currency": "GBP",
+        "paymentMethodId": frontend_data.get("paymentMethodId"),
+        "offSession": True, # CRITICAL: Tells the API to skip 3DS/User interaction
+        "paymentInitiatorId": INITIATOR_ID
+    }
+    try:
+        response = requests.post(f"{BASE_URL}/payments", headers=headers, json=payload)
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 

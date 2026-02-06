@@ -23,6 +23,7 @@ const NavBar = () => {
       <Link style={linkStyle} to="/">Home</Link>
       <Link style={linkStyle} to="/embedded">Embedded Payment</Link>
       <Link style={linkStyle} to="/marketing">Marketing Assets</Link>
+      <Link style={linkStyle} to="/account">Account Settings</Link>
     </nav>
   );
 };
