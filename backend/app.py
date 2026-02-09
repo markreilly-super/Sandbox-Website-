@@ -25,7 +25,7 @@ BRAND_ID = "f6883e2a-c76b-4ac6-840e-09891f72132e"
 
 
 # Note: Using the test subdomain for all calls
-BASE_URL = "https://api.test.superpayments.com/2025-11-01/checkout-sessions"
+BASE_URL = "https://api.test.superpayments.com/2025-11-01"
 
 @app.route('/checkout-sessions', methods=['POST'])
 def create_checkout():
@@ -42,7 +42,7 @@ def create_checkout():
 
     try:
         print(f"--- Step 1: Requesting session from {BASE_URL} ---")
-        response = requests.post(BASE_URL, headers=headers, json=payload)
+        response = requests.post(f"{BASE_URL}/checkout-sessions", headers=headers, json=payload)
         response_data = response.json()
         
         # Log to terminal to see the 'token' and 'checkoutSessionId'
@@ -61,7 +61,7 @@ def proceed_checkout(session_id):
     Step 4: Proceed with Checkout
     """
     # Constructing the URL: https://api.test.superpayments.com/2025-06-01/checkout-sessions/{id}/proceed
-    proceed_url = f"{BASE_URL}/{session_id}/proceed"
+    proceed_url = f"{BASE_URL}/checkout-sessions/{session_id}/proceed"
 
     print(f"Proceed URL: {proceed_url}")
     
@@ -101,27 +101,34 @@ def proceed_checkout(session_id):
 
 @app.route('/customers', methods=['POST'])
 def create_customer():
-    """Step 1: Create a permanent customer entity in Super Payments."""
     headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
-    # Payload usually requires email and optionally a name or external ID
     payload = {
-                "externalReference": "Customer_001",
-                "brandId": BRAND_ID,
-                "metadata": {
-                    "Name": "John SmithViaOffSession",
-                    }
-                }
+        "externalReference": "Customer_002",
+        "brandId": BRAND_ID,
+        "metadata": {"Name": "John SmithViaOffSession"}
+    }
     try:
+        # Step 1: Request from Super Payments
         response = requests.post(f"{BASE_URL}/customers", headers=headers, json=payload)
+        # Step 2: Return the JSON (containing the 'id') to your React frontend
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/payment-methods', methods=['POST'])
 def create_payment_method():
-    """Step 2: Initialize a payment method record for the customer."""
+    """Received the customerId from the frontend request body"""
     headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
-    payload = request.json # Must include customerId
+    
+    # Extract the ID sent by the frontend
+    customer_id = request.json.get("customerId") 
+    
+    payload = {
+        "customerId": customer_id,
+        "type": "CARD",
+        "usage": "OFF_SESSION",
+        "metadata": {"Name": "Test transaction"}
+    }
     try:
         response = requests.post(f"{BASE_URL}/payment-methods", headers=headers, json=payload)
         return jsonify(response.json()), response.status_code
@@ -130,11 +137,15 @@ def create_payment_method():
 
 @app.route('/payment-methods/<pm_id>/setup-intents', methods=['POST'])
 def create_setup_intent(pm_id):
-    """Step 3: Create a Setup Intent to authorize saving the card."""
+    """Step 3: Create a Setup Intent to authorize the card."""
     headers = {'Authorization': API_KEY, 'Content-Type': 'application/json'}
+    payload = {
+        "redirectUrl": "http://localhost:3000/success"
+    }
+    print(f"Creating Setup Intent for Payment Method ID: {pm_id}")
     try:
-        # This returns the sessionToken needed for the <super-checkout> component
-        response = requests.post(f"{BASE_URL}/payment-methods/{pm_id}/setup-intents", headers=headers)
+        url = f"{BASE_URL}/payment-methods/{pm_id}/setup-intents"
+        response = requests.post(url, headers=headers, json=payload)
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
