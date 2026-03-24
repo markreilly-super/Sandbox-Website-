@@ -32,6 +32,14 @@ const CheckoutPage = () => {
 
   const initialSyncDone = useRef(false);
 
+  // Always holds the latest phone number so the MutationObserver callback
+  // never captures a stale value from its closure
+  const phoneRef = useRef(billingDetails.phoneNumber);
+  useEffect(() => { phoneRef.current = billingDetails.phoneNumber; }, [billingDetails.phoneNumber]);
+
+  // Holds the active MutationObserver so we can disconnect it on cleanup
+  const bnplObserverRef = useRef(null);
+
   const triggerCustomPhoneNumberEvent = useCallback((phoneNumber) => {
     const superCheckoutElement = document.querySelector('super-checkout');
     if (superCheckoutElement && phoneNumber) {
@@ -56,6 +64,8 @@ const CheckoutPage = () => {
       setSdkConfig(JSON.parse(savedConfig));
     }
 
+    console.log("Payment method Order: " + sdkConfig.paymentMethodsOrder)
+
     const checkInterval = setInterval(() => {
       // Logic suggested by engineer: Check for the submit method on the global object
       const ready = Boolean(window.superCheckout && window.superCheckout.submit);
@@ -75,6 +85,108 @@ const CheckoutPage = () => {
 
     return () => clearInterval(checkInterval);
   }, [triggerCustomPhoneNumberEvent, billingDetails.phoneNumber]);
+
+  /**
+   * BNPL PHONE INJECTION
+   * The marketing/rewards components are in the DOM on page load so the initial
+   * superpayments:displaySignIn event reaches them fine. The BNPL iframe is lazy —
+   * it only mounts when the user clicks "Pay Later". We use a MutationObserver on
+   * the super-checkout shadow root to detect the moment that iframe appears, then
+   * immediately re-fire the phone number event so the BNPL flow pre-populates it.
+   */
+  useEffect(() => {
+    if (!sessionToken) return;
+
+    console.log('🔍 [BNPL Observer] Session active — polling for super-checkout shadow root...');
+
+    let pollInterval;
+
+    const attachObserver = (shadowRoot) => {
+      // Disconnect any previous observer (e.g. after a session refresh)
+      if (bnplObserverRef.current) {
+        bnplObserverRef.current.disconnect();
+        console.log('♻️  [BNPL Observer] Previous observer disconnected before re-attaching');
+      }
+
+      // Helper: directly populate the tel input inside the shadow DOM.
+      // Super Credit is a React app inside the shadow DOM, so we can't just set
+      // .value — we need to use the native HTMLInputElement setter to bypass React's
+      // synthetic event system, then dispatch 'input' to trigger its state update.
+      const fillTelInput = (attempt = 1) => {
+        const telInput = shadowRoot.querySelector('input[type="tel"]');
+        if (telInput) {
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value'
+          ).set;
+          nativeSetter.call(telInput, phoneRef.current);
+          telInput.dispatchEvent(new Event('input',  { bubbles: true }));
+          telInput.dispatchEvent(new Event('change', { bubbles: true }));
+          console.log('📱 [BNPL Observer] Tel input populated:', phoneRef.current);
+        } else if (attempt < 5) {
+          // Input may not be in the DOM yet — retry up to 5× every 150 ms
+          console.log(`⏳ [BNPL Observer] Tel input not found (attempt ${attempt}), retrying...`);
+          setTimeout(() => fillTelInput(attempt + 1), 150);
+        } else {
+          console.warn('⚠️ [BNPL Observer] Tel input not found after 5 attempts');
+        }
+      };
+
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+
+            // Super Credit renders as a plain div (NOT an iframe).
+            // Detect it by its container id or the authentication step testid.
+            const isSuperCredit =
+              node.id === 'super-credit-container' ||
+              node.querySelector?.('#super-credit-container') ||
+              node.querySelector?.('[data-testid="super-credit-step-authentication"]');
+
+            // Keep iframe detection as a fallback for other BNPL providers
+            const iframes = node.tagName === 'IFRAME'
+              ? [node]
+              : Array.from(node.querySelectorAll?.('iframe') ?? []);
+
+            if (isSuperCredit) {
+              console.log('🎯 [BNPL Observer] Super Credit container detected in shadow DOM');
+              console.log('   ↳ Firing superpayments:displaySignIn with phone:', phoneRef.current);
+              triggerCustomPhoneNumberEvent(phoneRef.current);
+              // Give React one tick to finish rendering the input, then fill it
+              setTimeout(() => fillTelInput(), 100);
+            } else if (iframes.length > 0) {
+              const src = iframes[0].src || iframes[0].getAttribute('src') || '(no src yet)';
+              console.log('🎯 [BNPL Observer] iframe detected in shadow DOM');
+              console.log('   ↳ src:', src);
+              console.log('   ↳ Firing superpayments:displaySignIn with phone:', phoneRef.current);
+              triggerCustomPhoneNumberEvent(phoneRef.current);
+            }
+          }
+        }
+      });
+
+      observer.observe(shadowRoot, { childList: true, subtree: true });
+      bnplObserverRef.current = observer;
+      console.log('✅ [BNPL Observer] MutationObserver attached — watching for Super Credit div & iframes');
+    };
+
+    pollInterval = setInterval(() => {
+      const superCheckout = document.querySelector('super-checkout');
+      if (superCheckout?.shadowRoot) {
+        clearInterval(pollInterval);
+        attachObserver(superCheckout.shadowRoot);
+      }
+    }, 200);
+
+    return () => {
+      clearInterval(pollInterval);
+      if (bnplObserverRef.current) {
+        bnplObserverRef.current.disconnect();
+        bnplObserverRef.current = null;
+        console.log('🧹 [BNPL Observer] Disconnected on cleanup');
+      }
+    };
+  }, [sessionToken, triggerCustomPhoneNumberEvent]);
 
   const handleSaveAndSync = useCallback(() => {
     setLoading(true);
@@ -98,7 +210,6 @@ const CheckoutPage = () => {
     setErrorMessage('');
 
     try {
-      // SDK Submission using the method we just verified exists
       const result = await window.superCheckout.submit({
         customerInformation: {
           firstName: billingDetails.firstName,
@@ -107,6 +218,8 @@ const CheckoutPage = () => {
           phoneNumber: billingDetails.phoneNumber,
         },
       });
+
+      console.log("Result Status" + result.status)
 
       if (result.status === 'FAILURE') {
         setErrorMessage(result.errorMessage || 'Payment Failed');
@@ -119,7 +232,7 @@ const CheckoutPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: 12000,
+          amount: 15000,
           email: billingDetails.email,
           phone: billingDetails.phoneNumber,
           externalReference: `ORDER_${Date.now()}`,
@@ -127,6 +240,9 @@ const CheckoutPage = () => {
       });
 
       const proceedData = await response.json();
+      console.log("Proceed Response Error: " + proceedData.detail)
+      console.log("Proceed Response Redirect URL: " + proceedData.redirectUrl)
+      console.log("Proceed Response Decline Reason: " + proceedData.extensions?.issues?.declineReason)
       if (proceedData.redirectUrl) {
         window.location.href = proceedData.redirectUrl; 
       }
@@ -181,12 +297,12 @@ const CheckoutPage = () => {
 
       {/* RIGHT COLUMN: SDK & CONDITIONAL BUTTON */}
       <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #ddd' }}>
-        <h2 style={{ fontSize: '1.4rem', marginBottom: '25px' }}>Payment</h2>
+        <h2 style={{ fontSize: '1.4rem', marginBottom: '25px' }}>Embedded Checkout</h2>
         {sessionToken ? (
           <>
             <super-checkout 
               key={refreshKey} 
-              amount="12000" 
+              amount="15000" 
               checkout-session-token={sessionToken}
               title={sdkConfig.title}
               subtitle={sdkConfig.subtitle}
@@ -194,7 +310,6 @@ const CheckoutPage = () => {
               pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
             />
 
-            {/* BUTTON REVEALED VIA ENGINEER'S Boolean Check */}
             {isSdkReady && (
               <button 
                 onClick={handlePlaceOrder}
@@ -203,7 +318,7 @@ const CheckoutPage = () => {
                   width: '100%', marginTop: '25px', padding: '18px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? 'Processing Order...' : 'Place Order — £120.00'}
+                {loading ? 'Processing Order...' : 'Place Order — £150.00'}
               </button>
             )}
             
