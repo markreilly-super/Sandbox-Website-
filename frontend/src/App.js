@@ -10,6 +10,7 @@ import DepositFlow from './components/depositFlow';
 import SavedCardCheckout from './components/savedCardCheckout';
 import HomePage from './components/home';
 import RequestLog from './components/requestLog';
+import InitialPayOffSession from './components/initialPayOffSession';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global card-data interceptor – runs at module load time, before any SDK
@@ -130,6 +131,7 @@ const App = () => {
         <Route path="/saved-card" element={<SavedCardCheckout />} />
         <Route path="/deposit" element={<DepositFlow />} />
         <Route path="/logs" element={<RequestLog />} />
+        <Route path="/initial-pay" element={<InitialPayOffSession />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
       </Routes>

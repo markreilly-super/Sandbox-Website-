@@ -81,6 +81,15 @@ const NavBar = () => {
             >
               Deposit Flow
             </Link>
+            <Link
+              style={dropdownItemStyle}
+              to="/initial-pay"
+              onClick={() => setDropdownOpen(false)}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              Initial Pay Off Session
+            </Link>
           </div>
         )}
       </div>
