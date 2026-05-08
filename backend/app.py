@@ -143,7 +143,8 @@ def refundWebhooks():
 @app.route('/checkout-sessions', methods=['POST'])
 def create_checkout():
     """
-    Step 1: Create a Checkout Session
+    Step 1: Create a Checkout Session.
+    Optionally accepts { customerId } in the request body to link a saved-card customer.
     """
     cfg = get_config()
     headers = {
@@ -154,12 +155,17 @@ def create_checkout():
         "paymentInitiatorId": cfg['initiator_id']
     }
 
+    frontend_data = request.get_json(silent=True) or {}
+    customer_id = frontend_data.get("customerId")
+    if customer_id:
+        payload["customer"] = {"id": customer_id}
+
     try:
         print(f"--- Step 1: Requesting session from {cfg['base_url']} ---")
         response = api_request('POST', f"{cfg['base_url']}/checkout-sessions", headers, payload)
         response_data = response.json()
         print("Super Payments Response:", response_data)
-        
+
         return jsonify(response_data), response.status_code
 
     except Exception as e:
@@ -218,12 +224,16 @@ def proceed_checkout(session_id):
 def create_customer():
     cfg = get_config()
     headers = {'Authorization': cfg['api_key'], 'Content-Type': 'application/json'}
+    frontend_data = request.get_json(silent=True) or {}
     unique_ref = str(uuid.uuid4())[:12]
     payload = {
-        "externalReference": f"Customer_{unique_ref}",
+        "externalReference": frontend_data.get("externalReference", f"Customer_{unique_ref}"),
         "brandId": cfg['brand_id'],
-        "metadata": {"Name": "SandboxUser"}
+        "metadata": {"Name": "SandboxUser"},
     }
+    for field in ("firstName", "lastName", "emailAddress", "phoneNumber"):
+        if frontend_data.get(field):
+            payload[field] = frontend_data[field]
     try:
         response = api_request('POST', f"{cfg['base_url']}/customers", headers, payload)
         return jsonify(response.json()), response.status_code
