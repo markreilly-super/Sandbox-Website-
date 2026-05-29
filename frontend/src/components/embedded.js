@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
+// NGROK: set to '' to proxy via React dev server (ngrok mode)
+// TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
+const API_BASE = '';
+
 const GLOBAL_EVENTS = {
   DISPLAY_BY_PHONE: 'superpayments:displaySignIn',
 };
@@ -22,9 +26,9 @@ const CheckoutPage = () => {
 
   const [billingDetails, setBillingDetails] = useState({
     firstName: 'Mark',
-    lastName: 'Reilly',
-    email: 'test@hotmail.com',
-    phoneNumber: '7462569556',
+    lastName: 'SFour',
+    email: 'SFour@hotmail.com',
+    phoneNumber: '07462753541',
     street: 'London Street',
     country: 'United Kingdom',
     postcode: 'SW1A 1AA'
@@ -228,7 +232,7 @@ const CheckoutPage = () => {
       }
 
       // Backend Proceed call
-      const response = await fetch(`http://localhost:5000/checkout-sessions/${checkoutSessionId}/proceed`, {
+      const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -256,7 +260,7 @@ const CheckoutPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const res = await fetch('http://localhost:5000/checkout-sessions', { method: 'POST' });
+        const res = await fetch(`${API_BASE}/checkout-sessions`, { method: 'POST' });
         const data = await res.json();
         if (data.checkoutSessionToken) {
           setSessionToken(data.checkoutSessionToken);

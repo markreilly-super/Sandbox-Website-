@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// NGROK: set to '' to proxy via React dev server (ngrok mode)
+// TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
+const API_BASE = '';
+
 /**
  * Listen for postMessage events from the <super-card> / Stripe iframe
  * to capture card details (last4, brand). Also deeply inspect the
@@ -100,7 +104,7 @@ const AccountPage = () => {
 
   const handleEnvironmentChange = async (newEnv) => {
     localStorage.setItem('super_environment', newEnv);
-    await fetch('http://localhost:5000/set-environment', {
+    await fetch(`${API_BASE}/set-environment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ environment: newEnv })
@@ -122,7 +126,7 @@ const AccountPage = () => {
       // Step 1: Create Customer (or reuse existing one)
       let currentCustomerId = customerId;
       if (!currentCustomerId) {
-        const custRes = await fetch('http://localhost:5000/customers', { method: 'POST' });
+        const custRes = await fetch(`${API_BASE}/customers`, { method: 'POST' });
         const customerData = await custRes.json();
         currentCustomerId = customerData.id;
         setCustomerId(currentCustomerId);
@@ -133,7 +137,7 @@ const AccountPage = () => {
       }
 
       // Step 2: Create Payment Method
-      const pmRes = await fetch('http://localhost:5000/payment-methods', {
+      const pmRes = await fetch(`${API_BASE}/payment-methods`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerId: currentCustomerId })
@@ -143,7 +147,7 @@ const AccountPage = () => {
       console.log("Payment Method created with ID:", pmData.id);
 
       // Step 3: Create Setup Intent -> get sessionToken for <super-card>
-      const setupRes = await fetch(`http://localhost:5000/payment-methods/${pmData.id}/setup-intents`, {
+      const setupRes = await fetch(`${API_BASE}/payment-methods/${pmData.id}/setup-intents`, {
         method: 'POST'
       });
       const setupData = await setupRes.json();
@@ -212,7 +216,7 @@ const AccountPage = () => {
     // Layer 3 – fetch from Super API
     try {
       console.log('[resolveCardData] Layer 3 – fetching GET /payment-methods/' + paymentMethodId);
-      const res = await fetch(`http://localhost:5000/payment-methods/${paymentMethodId}`);
+      const res = await fetch(`${API_BASE}/payment-methods/${paymentMethodId}`);
       const data = await res.json();
       console.log('[resolveCardData] Super API payment method response:', data);
       const hit = findCard(data);
@@ -403,6 +407,24 @@ const AccountPage = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Customer ID row */}
+        {customerId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '8px', fontSize: '12px', color: '#666' }}>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Customer: <code style={{ color: '#333' }}>{customerId}</code>
+            </span>
+            <button
+              onClick={() => {
+                localStorage.removeItem(`super_customer_id_${environment}`);
+                setCustomerId(null);
+              }}
+              style={{ flexShrink: 0, padding: '4px 10px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#e53935', fontWeight: '600' }}
+            >
+              Reset
+            </button>
           </div>
         )}
 

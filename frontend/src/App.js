@@ -11,6 +11,8 @@ import SavedCardCheckout from './components/savedCardCheckout';
 import HomePage from './components/home';
 import RequestLog from './components/requestLog';
 import InitialPayOffSession from './components/initialPayOffSession';
+import TokenCheckout from './components/tokenCheckout';
+import StripePage from './components/stripePage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global card-data interceptor – runs at module load time, before any SDK
@@ -88,8 +90,20 @@ import InitialPayOffSession from './components/initialPayOffSession';
   window.XMLHttpRequest.prototype = _XHR.prototype;
 })();
 
+const SDK_CONFIG = {
+  test: {
+    publicKey: 'pk_test_rJymaAd15u632MMGpkW1tQziKDWCXQcc0dWDOjGl',
+    integrationId: 'db0d5525-0b17-4acf-b4f5-8c47405e7079',
+  },
+  staging: {
+    publicKey: 'pk_stag_KGQ2yHCbOPDg8YMi_22SYfis4gSay7aPXzWe5UzH',
+    integrationId: '39733f1a-8a06-47e2-9fdb-38c5c78662eb',
+  },
+};
+
 const App = () => {
   const sdkEnv = localStorage.getItem('super_environment') || 'test';
+  const sdkConfig = SDK_CONFIG[sdkEnv] || SDK_CONFIG.test;
 
   useEffect(() => {
     // 1. Load Marketing Assets Script (super.js)
@@ -100,8 +114,8 @@ const App = () => {
       marketingScript.async = true;
       marketingScript.onload = () => {
         if (window.superjs) {
-          window.superjs.init('pk_test_rJymaAd15u632MMGpkW1tQziKDWCXQcc0dWDOjGl', {
-            integrationId: 'db0d5525-0b17-4acf-b4f5-8c47405e7079',
+          window.superjs.init(sdkConfig.publicKey, {
+            integrationId: sdkConfig.integrationId,
             platform: 'custom',
             page: 'cart'
           });
@@ -132,6 +146,8 @@ const App = () => {
         <Route path="/deposit" element={<DepositFlow />} />
         <Route path="/logs" element={<RequestLog />} />
         <Route path="/initial-pay" element={<InitialPayOffSession />} />
+        <Route path="/token-checkout" element={<TokenCheckout />} />
+        <Route path="/stripe" element={<StripePage />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
       </Routes>

@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
+// TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
+const API_BASE = '';
+
 const GLOBAL_EVENTS = {
   DISPLAY_BY_PHONE: 'superpayments:displaySignIn',
 };
@@ -96,7 +99,7 @@ const InitialPayOffSession = () => {
     try {
       // Step 1: Create customer with billing details
       setStep(1);
-      const custRes = await fetch('http://localhost:5000/customers', {
+      const custRes = await fetch(`${API_BASE}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -113,7 +116,7 @@ const InitialPayOffSession = () => {
 
       // Step 2: Create checkout session with the customer ID attached
       setStep(2);
-      const sessRes = await fetch('http://localhost:5000/checkout-sessions', {
+      const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerId: custData.id }),
@@ -149,7 +152,7 @@ const InitialPayOffSession = () => {
         setLoading(false);
         return;
       }
-      const response = await fetch(`http://localhost:5000/checkout-sessions/${checkoutSessionId}/proceed`, {
+      const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -157,6 +160,7 @@ const InitialPayOffSession = () => {
           email: billingDetails.email,
           phone: billingDetails.phoneNumber,
           externalReference: `ORDER_${Date.now()}`,
+          customerId,
         }),
       });
       const proceedData = await response.json();
@@ -186,10 +190,10 @@ const InitialPayOffSession = () => {
 
       {/* Staging notice */}
       <div style={{
-        background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '8px',
-        padding: '12px 20px', marginBottom: '28px', fontSize: '14px', color: '#856404',
+        background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '8px',
+        padding: '12px 20px', marginBottom: '28px', fontSize: '14px', color: '#555',
       }}>
-        <strong>Staging only:</strong> This scenario requires the staging environment. Make sure the backend is running with staging credentials selected.
+        Environment is controlled by your selection on the <strong>Account Settings</strong> page.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>

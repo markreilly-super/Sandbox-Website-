@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link} from 'react-router-dom';
 
+// NGROK: set to '' to proxy via React dev server (ngrok mode)
+// TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
+const API_BASE = '';
+
 
 const ORDER = {
   name: 'Music Subscription',
@@ -29,7 +33,7 @@ const SavedCardCheckout = () => {
     setPaying(true);
     setResult(null);
     try {
-      const res = await fetch('http://localhost:5000/create-off-session-payment', {
+      const res = await fetch(`${API_BASE}/create-off-session-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,12 +1,21 @@
+import os
 import requests
 import uuid
 import json
+import stripe
 import threading
 import queue
 from collections import deque
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
+
+# Load .env file if present (keeps secrets out of source control)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed — set env vars manually
 
 app = Flask(__name__)
 
@@ -16,20 +25,25 @@ CORS(app)
 # Configuration - environment credentials
 CREDENTIALS = {
     'test': {
-        'api_key': "sk_test_U4F3nb-ob0DhbmZXPue0R1mc0-flivT9YJ90KZTm",
-        'initiator_id': "db0d5525-0b17-4acf-b4f5-8c47405e7079",
-        'brand_id': "f6883e2a-c76b-4ac6-840e-09891f72132e",
-        'base_url': "https://api.test.superpayments.com/2025-11-01"
+        'api_key': "sk_test_n8Wy6QkSyLpANd-CdDZsIiBubwpJsvOlaG5LWCVD",
+        'initiator_id': "e31e45fe-76c9-4ba2-ad41-c206481f3398",
+        'brand_id': "0714ece1-629a-47ef-a01a-c79ae8dc2bab",
+        'base_url': "https://api.test.superpayments.com/2026-04-01"
     },
     'staging': {
-        'api_key': "sk_stag_MGxPoxlNNlKJ1OTzFvHnXKUv62SRMamHvZhmdFrG",
+        'api_key': "sk_stag_06evkW7XDJ89eWEqMxbSWRo6nZftFOUt-QeTLmNa",
         'initiator_id': "39733f1a-8a06-47e2-9fdb-38c5c78662eb",
         'brand_id': "60202016-cada-4832-b792-ff3710b5c4ce",
-        'base_url': "https://api.staging.superpayments.com/2025-11-01"
+        'base_url': "https://api.staging.superpayments.com/2026-04-01"
     }
 }
 
 current_env = 'test'
+
+# ── Stripe config ─────────────────────────────────────────────────────────────
+# Set STRIPE_SECRET_KEY in backend/.env (gitignored) or your shell environment
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+stripe.api_key = STRIPE_SECRET_KEY
 
 def get_config():
     return CREDENTIALS[current_env]
@@ -157,8 +171,15 @@ def create_checkout():
 
     frontend_data = request.get_json(silent=True) or {}
     customer_id = frontend_data.get("customerId")
+
     if customer_id:
-        payload["customer"] = {"id": customer_id}
+        payload["customer"] = {
+            "id": customer_id,
+            "savePaymentMethod": True,
+            "paymentMethodMetadata": {
+                "Card": "4242"
+            }
+        }
 
     try:
         print(f"--- Step 1: Requesting session from {cfg['base_url']} ---")
@@ -182,6 +203,7 @@ def proceed_checkout(session_id):
     proceed_url = f"{cfg['base_url']}/checkout-sessions/{session_id}/proceed"
 
     print(f"Proceed URL: {proceed_url}")
+    print(f"[Environment] Proceed {current_env}")
 
     headers = {
         'Authorization': cfg['api_key'],
@@ -203,7 +225,33 @@ def proceed_checkout(session_id):
         "metadata": {
             "firstName": "Mark",
             "lastName": "Reilly"
-        }
+        },
+        "shippingAddress": {
+    "addressLine1": "123 Test Street",
+    "city": "London",
+    "country": "GB"
+  },
+  "billingAddress": {
+   "addressLine1": "123 Test Street",
+    "city": "London",
+    "country": "GB"
+  },
+  "lineItems": [
+    {
+      "type": "AIRLINE",
+      "data": {
+        "flightNumber": "FR1234",
+        "flightDate": "2026-03-15T10:30:00+00:00",
+        "travellers": [
+          {
+            "name": "Test Name"
+          }
+        ],
+        "totalPrice": 3000,
+        "currency": "GBP"
+      }
+    }
+  ],
     }
 
     try:
@@ -235,8 +283,17 @@ def create_customer():
         if frontend_data.get(field):
             payload[field] = frontend_data[field]
     try:
+        print(f"--- Creating customer via {cfg['base_url']} ---")
+        print(f"[Environment] Customers: {current_env}")
         response = api_request('POST', f"{cfg['base_url']}/customers", headers, payload)
-        return jsonify(response.json()), response.status_code
+        try:
+            return jsonify(response.json()), response.status_code
+        except ValueError:
+            # API returned an empty or non-JSON body — surface status + raw text
+            return jsonify({
+                "error": f"API returned HTTP {response.status_code} with non-JSON body",
+                "detail": response.text or "(empty body)"
+            }), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -256,6 +313,7 @@ def create_payment_method():
         "metadata": {"Name": "Test transaction"}
     }
     try:
+        print(f"[Environment] Payment Methods: {current_env}")
         response = api_request('POST', f"{cfg['base_url']}/payment-methods", headers, payload)
         return jsonify(response.json()), response.status_code
     except Exception as e:
@@ -269,6 +327,7 @@ def create_setup_intent(pm_id):
     payload = {
         "redirectUrl": "http://localhost:3000/success"
     }
+    print(f"[Environment] Setup Intents: {current_env}")
     print(f"Creating Setup Intent for Payment Method ID: {pm_id}")
     try:
         url = f"{cfg['base_url']}/payment-methods/{pm_id}/setup-intents"
@@ -285,6 +344,7 @@ def get_payment_method(pm_id):
     headers = {'Authorization': cfg['api_key'], 'accept': 'application/json'}
     try:
         url = f"{cfg['base_url']}/payment-methods/{pm_id}"
+        print(f"[Environment] GET Payment Method: {current_env}")
         response = api_request('GET', url, headers)
         data = response.json()
         print(f"GET Payment Method Response: {data}")
@@ -302,15 +362,137 @@ def off_session_payment():
     payload = {
         "amount": frontend_data.get("amount"),
         "currency": "GBP",
+        "externalReference": "Off Session",
         "paymentMethodId": frontend_data.get("paymentMethodId"),
         "offSession": True, # CRITICAL: Tells the API to skip 3DS/User interaction
         "paymentInitiatorId": cfg['initiator_id']
     }
     try:
+        print(f"[Environment] Off Session Payment: {current_env}")
         response = api_request('POST', f"{cfg['base_url']}/payments", headers, payload)
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── Stripe endpoints ──────────────────────────────────────────────────────────
+
+@app.route('/stripe/create-payment-intent', methods=['POST'])
+def create_payment_intent():
+    """Create a Stripe PaymentIntent and return the client_secret to the frontend."""
+    data = request.get_json() or {}
+    amount = data.get('amount', 1000)  # amount in pence, default £10.00
+
+    request_body = {
+        'amount': amount,
+        'currency': 'gbp',
+        'automatic_payment_methods': {'enabled': True},
+        'setup_future_usage': 'off_session',
+    }
+
+    entry = {
+        'id': str(uuid.uuid4()),
+        'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.') + f"{datetime.utcnow().microsecond // 1000:03d}Z",
+        'method': 'POST',
+        'endpoint': '/v1/payment_intents  [Stripe]',
+        'request_body': request_body,
+        'status': None,
+        'response_body': None,
+    }
+
+    try:
+        intent = stripe.PaymentIntent.create(**request_body)
+
+        response_body = {
+            'id': intent.id,
+            'amount': intent.amount,
+            'currency': intent.currency,
+            'status': intent.status,
+            'client_secret': intent.client_secret,
+        }
+
+        entry['status'] = 200
+        entry['response_body'] = response_body
+        _add_log(entry)
+
+        print(f"[Stripe] PaymentIntent created: {intent.id} — amount: {amount}p — status: {intent.status}")
+
+        return jsonify({
+            'client_secret': intent.client_secret,
+            'payment_intent_id': intent.id,
+            'amount': amount,
+        })
+
+    except stripe.error.StripeError as e:
+        entry['status'] = 400
+        entry['response_body'] = {'error': e.user_message}
+        _add_log(entry)
+        print(f"[Stripe] Error: {e.user_message}")
+        return jsonify({'error': e.user_message}), 400
+
+    except Exception as e:
+        entry['status'] = 500
+        entry['response_body'] = {'error': str(e)}
+        _add_log(entry)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/stripe/create-setup-intent', methods=['POST'])
+def create_setup_intent_stripe():
+    """Create a Stripe Customer + SetupIntent to save a card without charging it."""
+
+    entry = {
+        'id': str(uuid.uuid4()),
+        'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.') + f"{datetime.utcnow().microsecond // 1000:03d}Z",
+        'method': 'POST',
+        'endpoint': '/v1/setup_intents  [Stripe]',
+        'request_body': {'automatic_payment_methods': {'enabled': True}},
+        'status': None,
+        'response_body': None,
+    }
+
+    try:
+        # Step 1: Create a Stripe Customer to attach the saved card to
+        customer = stripe.Customer.create()
+        print(f"[Stripe] Customer created: {customer.id}")
+
+        # Step 2: Create a SetupIntent attached to that customer
+        setup_intent = stripe.SetupIntent.create(
+            customer=customer.id,
+            automatic_payment_methods={'enabled': True},
+        )
+
+        response_body = {
+            'id': setup_intent.id,
+            'status': setup_intent.status,
+            'customer': customer.id,
+            'client_secret': setup_intent.client_secret,
+        }
+
+        entry['status'] = 200
+        entry['response_body'] = response_body
+        _add_log(entry)
+
+        print(f"[Stripe] SetupIntent created: {setup_intent.id} — customer: {customer.id} — status: {setup_intent.status}")
+
+        return jsonify({
+            'client_secret': setup_intent.client_secret,
+            'setup_intent_id': setup_intent.id,
+            'customer_id': customer.id,
+        })
+
+    except stripe.error.StripeError as e:
+        entry['status'] = 400
+        entry['response_body'] = {'error': e.user_message}
+        _add_log(entry)
+        print(f"[Stripe] Error: {e.user_message}")
+        return jsonify({'error': e.user_message}), 400
+
+    except Exception as e:
+        entry['status'] = 500
+        entry['response_body'] = {'error': str(e)}
+        _add_log(entry)
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

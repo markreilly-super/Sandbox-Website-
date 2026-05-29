@@ -4,7 +4,7 @@ const MarketingPage = () => {
   const [selections, setSelections] = useState({
     page: 'product-listing',
     cartID: 'examplecart',
-    cartAmount: '5000',
+    cartAmount: '1000',
     colourScheme: 'Black and Orange', // Updated to match your script
     placement: 'top',
     position: 'left',

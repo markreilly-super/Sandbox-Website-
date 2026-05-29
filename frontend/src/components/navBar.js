@@ -48,6 +48,7 @@ const NavBar = () => {
       <Link style={linkStyle} to="/marketing">Marketing Assets</Link>
       <Link style={linkStyle} to="/account">Account Settings</Link>
       <Link style={linkStyle} to="/logs">Request Log</Link>
+      <Link style={linkStyle} to="/stripe">Stripe</Link>
 
       {/* Scenarios Dropdown */}
       <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -89,6 +90,15 @@ const NavBar = () => {
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               Initial Pay Off Session
+            </Link>
+            <Link
+              style={dropdownItemStyle}
+              to="/token-checkout"
+              onClick={() => setDropdownOpen(false)}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              Token Checkout
             </Link>
           </div>
         )}

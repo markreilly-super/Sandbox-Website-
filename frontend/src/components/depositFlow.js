@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
+// NGROK: set to '' to proxy via React dev server (ngrok mode)
+// TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
+const API_BASE = '';
+
 const STAGE = {
   IDLE: 'IDLE',
   REGISTERING: 'REGISTERING',
@@ -52,10 +56,10 @@ const DepositFlow = () => {
     window.__capturedCardData = null;
 
     try {
-      const custRes = await fetch('http://localhost:5000/customers', { method: 'POST' });
+      const custRes = await fetch(`${API_BASE}/customers`, { method: 'POST' });
       const custData = await custRes.json();
 
-      const pmRes = await fetch('http://localhost:5000/payment-methods', {
+      const pmRes = await fetch(`${API_BASE}/payment-methods`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customerId: custData.id }),
@@ -63,7 +67,7 @@ const DepositFlow = () => {
       const pmData = await pmRes.json();
       setPaymentMethodId(pmData.id);
 
-      const setupRes = await fetch(`http://localhost:5000/payment-methods/${pmData.id}/setup-intents`, {
+      const setupRes = await fetch(`${API_BASE}/payment-methods/${pmData.id}/setup-intents`, {
         method: 'POST',
       });
       const setupData = await setupRes.json();
@@ -101,7 +105,7 @@ const DepositFlow = () => {
     setStatusMessage('');
 
     try {
-      const res = await fetch('http://localhost:5000/create-off-session-payment', {
+      const res = await fetch(`${API_BASE}/create-off-session-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, paymentMethodId }),

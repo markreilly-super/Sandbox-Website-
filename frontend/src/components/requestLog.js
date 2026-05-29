@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// NGROK: set to '' to proxy via React dev server (ngrok mode)
+// TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
+const API_BASE = '';
+
 const C = {
   bg:      '#0d1117',
   surface: '#161b22',
@@ -84,12 +88,14 @@ const RequestLog = () => {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/logs')
+    fetch(`${API_BASE}/logs`)
       .then(r => r.json())
       .then(data => setEntries(data))
       .catch(() => {});
 
-    const es = new EventSource('http://localhost:5000/logs/stream');
+    // EventSource requires an absolute URL — derive it from the current origin when API_BASE is empty
+    const sseUrl = API_BASE ? `${API_BASE}/logs/stream` : `${window.location.origin}/logs/stream`;
+    const es = new EventSource(sseUrl);
     es.onmessage = (e) => {
       try {
         const entry = JSON.parse(e.data);
@@ -104,7 +110,7 @@ const RequestLog = () => {
   }, [entries]);
 
   const handleClear = async () => {
-    await fetch('http://localhost:5000/logs', { method: 'DELETE' });
+    await fetch(`${API_BASE}/logs`, { method: 'DELETE' });
     setEntries([]);
   };
 
