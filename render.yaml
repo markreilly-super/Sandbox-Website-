@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: superpayments-sandbox
+    runtime: python
+    buildCommand: |
+      cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    envVars:
+      - key: FRONTEND_URL
+        # Set this to your Render service URL once deployed, e.g. https://superpayments-sandbox.onrender.com
+        value: https://superpayments-sandbox.onrender.com
+      - key: STRIPE_SECRET_KEY
+        sync: false  # Set this manually in the Render dashboard (do not commit)
+    autoDeploy: true

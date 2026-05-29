@@ -7,7 +7,7 @@ import threading
 import queue
 from collections import deque
 from datetime import datetime
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request, Response, send_from_directory
 from flask_cors import CORS
 
 # Load .env file if present (keeps secrets out of source control)
@@ -17,10 +17,16 @@ try:
 except ImportError:
     pass  # python-dotenv not installed — set env vars manually
 
-app = Flask(__name__)
+# Path to the React production build (relative to this file)
+STATIC_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
 
-# 1. Enable CORS so React (port 3000) can talk to Flask (port 5000)
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
+
+# CORS for local development; in production the React build is served by Flask directly
 CORS(app)
+
+# Base URL of the frontend — used for redirect URLs sent to the Super Payments API
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 # Configuration - environment credentials
 CREDENTIALS = {
@@ -214,9 +220,9 @@ def proceed_checkout(session_id):
 
     payload = {
         "amount": frontend_data.get("amount", 5000), # Default to 5000 (e.g. £50.00) if not sent
-        "cancelUrl": "http://localhost:3000/cancel",
-        "failureUrl": "http://localhost:3000/failure",
-        "successUrl": "http://localhost:3000/success",
+        "cancelUrl": f"{FRONTEND_URL}/cancel",
+        "failureUrl": f"{FRONTEND_URL}/failure",
+        "successUrl": f"{FRONTEND_URL}/success",
         "externalReference": frontend_data.get("externalReference", "TEST_ORDER_001_VIA_LOCALHOST"),
         "email": frontend_data.get("email", "customer@example.com"),
         "phone": frontend_data.get("phone", "07700900000"),
@@ -325,7 +331,7 @@ def create_setup_intent(pm_id):
     cfg = get_config()
     headers = {'Authorization': cfg['api_key'], 'Content-Type': 'application/json'}
     payload = {
-        "redirectUrl": "http://localhost:3000/success"
+        "redirectUrl": f"{FRONTEND_URL}/success"
     }
     print(f"[Environment] Setup Intents: {current_env}")
     print(f"Creating Setup Intent for Payment Method ID: {pm_id}")
@@ -495,6 +501,28 @@ def create_setup_intent_stripe():
         return jsonify({'error': str(e)}), 500
 
 
+# ── Apple Pay domain verification ────────────────────────────────────────────
+@app.route('/.well-known/apple-developer-merchantid-domain-association')
+def apple_pay_domain_verification():
+    """
+    Serve the Apple Pay domain association file.
+    Download this file from your payment processor (Super Payments / Stripe)
+    and place it at backend/apple-developer-merchantid-domain-association
+    """
+    well_known_dir = os.path.join(os.path.dirname(__file__), '.well-known')
+    return send_from_directory(well_known_dir, 'apple-developer-merchantid-domain-association')
+
+
+# ── Serve React build (production) ───────────────────────────────────────────
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    """Serve the React production build for all non-API routes."""
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, 'index.html')
+
+
 if __name__ == '__main__':
-    # Flask runs on http://localhost:5000
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
