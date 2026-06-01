@@ -47,9 +47,41 @@ const NavBar = () => {
       <Link style={linkStyle} to="/embedded">Embedded Payment</Link>
       <Link style={linkStyle} to="/marketing">Marketing Assets</Link>
       <Link style={linkStyle} to="/account">Account Settings</Link>
-      <Link style={linkStyle} to="/logs">Request Log</Link>
-      <Link style={linkStyle} to="/webhooks">Webhooks</Link>
-      <Link style={linkStyle} to="/stripe">Stripe</Link>
+      {/* Logs Dropdown */}
+      <div ref={dropdownRef} style={{ position: 'relative' }}>
+        <span
+          style={{ ...linkStyle, cursor: 'pointer', userSelect: 'none' }}
+          onClick={() => setDropdownOpen(open => !open)}
+        >
+          Logs ▾
+        </span>
+        {dropdownOpen && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 12px)', right: 0,
+            backgroundColor: '#2a2a2a', borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.4)', overflow: 'hidden', zIndex: 100
+          }}>
+            <Link
+              style={dropdownItemStyle}
+              to="/logs"
+              onClick={() => setDropdownOpen(false)}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              Request Log
+            </Link>
+            <Link
+              style={dropdownItemStyle}
+              to="/webhooks"
+              onClick={() => setDropdownOpen(false)}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              Webhook Logs
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* Scenarios Dropdown */}
       <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -100,6 +132,15 @@ const NavBar = () => {
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               Token Checkout
+            </Link>
+            <Link
+              style={dropdownItemStyle}
+              to="/stripe"
+              onClick={() => setDropdownOpen(false)}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              Stripe
             </Link>
           </div>
         )}

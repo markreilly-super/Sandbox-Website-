@@ -27,6 +27,13 @@ services:
     buildFilter:
       paths:
         - frontend/**
+    headers:
+      - path: /.well-known/apple-developer-merchantid-domain-association
+        name: Content-Type
+        value: text/plain
+      - path: /.well-known/apple-developer-merchantid-domain-association
+        name: Content-Disposition
+        value: inline
     routes:
       - type: rewrite
         source: /*
