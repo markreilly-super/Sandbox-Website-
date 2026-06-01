@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 // NGROK: set to '' to proxy via React dev server (ngrok mode)
 // TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
-const API_BASE = '';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 const GLOBAL_EVENTS = {
   DISPLAY_BY_PHONE: 'superpayments:displaySignIn',

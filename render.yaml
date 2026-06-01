@@ -1,14 +1,32 @@
 services:
   - type: web
-    name: superpayments-sandbox
+    name: flask-backend
+    region: oregon
+    plan: free
     runtime: python
-    buildCommand: |
-      cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt
-    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    buildFilter:
+      paths:
+        - backend/**
     envVars:
       - key: FRONTEND_URL
-        # Set this to your Render service URL once deployed, e.g. https://superpayments-sandbox.onrender.com
-        value: https://superpayments-sandbox.onrender.com
+        value: https://react-frontend.onrender.com  # update to your actual static site URL
       - key: STRIPE_SECRET_KEY
-        sync: false  # Set this manually in the Render dashboard (do not commit)
-    autoDeploy: true
+        sync: false  # set this in the Render dashboard
+
+  - type: web
+    name: react-frontend
+    region: oregon
+    plan: free
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    buildFilter:
+      paths:
+        - frontend/**
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        value: https://flask-backend.onrender.com  # update to your actual backend URL

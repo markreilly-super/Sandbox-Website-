@@ -5,7 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 // NGROK: set to '' to proxy via React dev server (ngrok mode)
 // TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
-const API_BASE = '';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 const DEFAULT_STRIPE_PK = 'pk_test_51T7KVpPsnVv1kXWyxSjJ1qghY7aRGnVAG4mWcwbJiJ83bKE9Clmr5t9SFyKdnhJLE7zzIvLy89HsoiuD8q22SvDO00XZEQmfNs';
 

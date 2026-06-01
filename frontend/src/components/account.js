@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 // NGROK: set to '' to proxy via React dev server (ngrok mode)
 // TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
-const API_BASE = '';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 /**
  * Listen for postMessage events from the <super-card> / Stripe iframe
