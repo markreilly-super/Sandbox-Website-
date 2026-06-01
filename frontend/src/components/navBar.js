@@ -3,13 +3,18 @@ import { Link } from 'react-router-dom';
 
 const NavBar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownOpenLog, setDropdownOpenLog] = useState(false);
   const dropdownRef = useRef(null);
+  const logDropdownRef = useRef(null);
 
-  // Close when clicking anywhere outside the dropdown
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
+      }
+      if (logDropdownRef.current && !logDropdownRef.current.contains(e.target)) {
+        setDropdownOpenLog(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -48,14 +53,14 @@ const NavBar = () => {
       <Link style={linkStyle} to="/marketing">Marketing Assets</Link>
       <Link style={linkStyle} to="/account">Account Settings</Link>
       {/* Logs Dropdown */}
-      <div ref={dropdownRef} style={{ position: 'relative' }}>
+      <div ref={logDropdownRef} style={{ position: 'relative' }}>
         <span
           style={{ ...linkStyle, cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setDropdownOpen(open => !open)}
+          onClick={() => setDropdownOpenLog(open => !open)}
         >
           Logs ▾
         </span>
-        {dropdownOpen && (
+        {dropdownOpenLog && (
           <div style={{
             position: 'absolute', top: 'calc(100% + 12px)', right: 0,
             backgroundColor: '#2a2a2a', borderRadius: '8px',
@@ -64,7 +69,7 @@ const NavBar = () => {
             <Link
               style={dropdownItemStyle}
               to="/logs"
-              onClick={() => setDropdownOpen(false)}
+              onClick={() => setDropdownOpenLog(false)}
               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
@@ -73,7 +78,7 @@ const NavBar = () => {
             <Link
               style={dropdownItemStyle}
               to="/webhooks"
-              onClick={() => setDropdownOpen(false)}
+              onClick={() => setDropdownOpenLog(false)}
               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
