@@ -1,7 +1,7 @@
 services:
   - type: web
     name: flask-backend
-    region: oregon
+    region: frankfurt
     plan: free
     runtime: python
     rootDir: backend
@@ -12,13 +12,13 @@ services:
         - backend/**
     envVars:
       - key: FRONTEND_URL
-        value: https://react-frontend.onrender.com  # update to your actual static site URL
+        value: https://superintegration.onrender.com
       - key: STRIPE_SECRET_KEY
-        sync: false  # set this in the Render dashboard
+        sync: false  # set in the Render dashboard
 
   - type: web
     name: react-frontend
-    region: oregon
+    region: frankfurt
     plan: free
     runtime: static
     rootDir: frontend
@@ -29,4 +29,4 @@ services:
         - frontend/**
     envVars:
       - key: REACT_APP_BACKEND_URL
-        value: https://flask-backend.onrender.com  # update to your actual backend URL
+        value: https://flask-backend.onrender.com  # update once backend service is created
