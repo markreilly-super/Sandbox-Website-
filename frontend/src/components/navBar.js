@@ -48,6 +48,7 @@ const NavBar = () => {
       <Link style={linkStyle} to="/marketing">Marketing Assets</Link>
       <Link style={linkStyle} to="/account">Account Settings</Link>
       <Link style={linkStyle} to="/logs">Request Log</Link>
+      <Link style={linkStyle} to="/webhooks">Webhooks</Link>
       <Link style={linkStyle} to="/stripe">Stripe</Link>
 
       {/* Scenarios Dropdown */}

@@ -13,6 +13,7 @@ import RequestLog from './components/requestLog';
 import InitialPayOffSession from './components/initialPayOffSession';
 import TokenCheckout from './components/tokenCheckout';
 import StripePage from './components/stripePage';
+import WebhookLog from './components/webhookLog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global card-data interceptor – runs at module load time, before any SDK
@@ -148,6 +149,7 @@ const App = () => {
         <Route path="/initial-pay" element={<InitialPayOffSession />} />
         <Route path="/token-checkout" element={<TokenCheckout />} />
         <Route path="/stripe" element={<StripePage />} />
+        <Route path="/webhooks" element={<WebhookLog />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
       </Routes>

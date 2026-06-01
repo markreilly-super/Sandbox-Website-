@@ -60,6 +60,24 @@ log_lock = threading.Lock()
 sse_clients = set()
 sse_lock = threading.Lock()
 
+# ── Webhook logging ───────────────────────────────────────────────────────────
+webhook_history = deque(maxlen=100)
+webhook_lock = threading.Lock()
+webhook_sse_clients = set()
+webhook_sse_lock = threading.Lock()
+
+def _add_webhook(entry):
+    with webhook_lock:
+        webhook_history.append(entry)
+    with webhook_sse_lock:
+        dead = set()
+        for q in webhook_sse_clients:
+            try:
+                q.put_nowait(entry)
+            except Exception:
+                dead.add(q)
+        webhook_sse_clients.difference_update(dead)
+
 def _add_log(entry):
     with log_lock:
         log_history.append(entry)
@@ -106,6 +124,13 @@ def api_request(method, url, headers, json_body=None):
 def webhooks():
     payload = request.get_json()
     print('[Webhook received]', json.dumps(payload, indent=2))
+    _add_webhook({
+        'id': str(uuid.uuid4()),
+        'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.') + f"{datetime.utcnow().microsecond // 1000:03d}Z",
+        'type': 'payment',
+        'endpoint': '/payment',
+        'payload': payload,
+    })
     return 'ok', 200
 
 @app.route('/set-environment', methods=['POST', 'GET'])
@@ -158,7 +183,47 @@ def logs_stream():
 def refundWebhooks():
     payload = request.get_json()
     print('[Refund Webhook received]', json.dumps(payload, indent=2))
+    _add_webhook({
+        'id': str(uuid.uuid4()),
+        'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.') + f"{datetime.utcnow().microsecond // 1000:03d}Z",
+        'type': 'refund',
+        'endpoint': '/refund',
+        'payload': payload,
+    })
     return 'ok', 200
+
+@app.route('/webhooks', methods=['GET'])
+def get_webhooks():
+    with webhook_lock:
+        return jsonify(list(webhook_history))
+
+@app.route('/webhooks', methods=['DELETE'])
+def clear_webhooks():
+    with webhook_lock:
+        webhook_history.clear()
+    return jsonify({'cleared': True})
+
+@app.route('/webhooks/stream')
+def webhooks_stream():
+    def generate():
+        client_q = queue.Queue()
+        with webhook_sse_lock:
+            webhook_sse_clients.add(client_q)
+        try:
+            yield ': connected\n\n'
+            while True:
+                try:
+                    entry = client_q.get(timeout=15)
+                    yield f'data: {json.dumps(entry)}\n\n'
+                except queue.Empty:
+                    yield ': keepalive\n\n'
+        except GeneratorExit:
+            pass
+        finally:
+            with webhook_sse_lock:
+                webhook_sse_clients.discard(client_q)
+    return Response(generate(), content_type='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 @app.route('/checkout-sessions', methods=['POST'])
 def create_checkout():
@@ -507,10 +572,14 @@ def apple_pay_domain_verification():
     """
     Serve the Apple Pay domain association file.
     Download this file from your payment processor (Super Payments / Stripe)
-    and place it at backend/apple-developer-merchantid-domain-association
+    and place it at backend/.well-known/apple-developer-merchantid-domain-association
     """
     well_known_dir = os.path.join(os.path.dirname(__file__), '.well-known')
-    return send_from_directory(well_known_dir, 'apple-developer-merchantid-domain-association')
+    return send_from_directory(
+        well_known_dir,
+        'apple-developer-merchantid-domain-association',
+        mimetype='text/plain'
+    )
 
 
 # ── Serve React build (production) ───────────────────────────────────────────
