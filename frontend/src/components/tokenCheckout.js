@@ -70,6 +70,29 @@ const TokenCheckout = () => {
     return () => clearInterval(interval);
   }, [sessionToken, triggerCustomPhoneNumberEvent, billingDetails.phoneNumber]);
 
+  // Register Apple Pay / Google Pay express button handler
+  useEffect(() => {
+    if (!isSdkReady || !checkoutSessionId) return;
+    window.superCheckout.registerWalletsHandler(async () => {
+      try {
+        const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: 15000,
+            email: billingDetails.email,
+            phone: billingDetails.phoneNumber,
+            externalReference: `ORDER_${Date.now()}`,
+          }),
+        });
+        const proceedData = await response.json();
+        if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
+      } catch (err) {
+        console.error('Wallets handler error:', err);
+      }
+    });
+  }, [isSdkReady, checkoutSessionId, billingDetails]);
+
   // MutationObserver for BNPL phone injection
   useEffect(() => {
     if (!sessionToken) return;
