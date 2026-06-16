@@ -41,6 +41,12 @@ CREDENTIALS = {
         'initiator_id': "39733f1a-8a06-47e2-9fdb-38c5c78662eb",
         'brand_id': "60202016-cada-4832-b792-ff3710b5c4ce",
         'base_url': "https://api.staging.superpayments.com/2026-04-01"
+    },
+    'custom': {
+        'api_key': '',
+        'initiator_id': '',
+        'brand_id': '',
+        'base_url': ''
     }
 }
 
@@ -144,7 +150,37 @@ def set_environment():
         current_env = env
         print(f"[Environment] Switched to: {current_env}")
         return jsonify({'environment': current_env})
-    return jsonify({'error': 'Invalid environment. Use "test" or "staging".'}), 400
+    return jsonify({'error': 'Invalid environment. Use "test", "staging", or "custom".'}), 400
+
+@app.route('/custom-credentials', methods=['POST'])
+def set_custom_credentials():
+    """Store custom API credentials and switch to the custom environment."""
+    global current_env
+    data = request.get_json() or {}
+    env_type = data.get('envType', 'test')  # which base URL to use
+    base_url = (
+        "https://api.test.superpayments.com/2026-04-01" if env_type == 'test'
+        else "https://api.staging.superpayments.com/2026-04-01"
+    )
+    CREDENTIALS['custom'] = {
+        'api_key':      data.get('api_key', ''),
+        'initiator_id': data.get('initiator_id', ''),
+        'brand_id':     data.get('brand_id', ''),
+        'base_url':     base_url
+    }
+    current_env = 'custom'
+    print(f"[Custom Credentials] Applied — base_url: {base_url}")
+    return jsonify({'success': True, 'environment': 'custom'})
+
+@app.route('/custom-credentials', methods=['DELETE'])
+def clear_custom_credentials():
+    """Clear custom credentials and revert to test environment."""
+    global current_env
+    CREDENTIALS['custom'] = {'api_key': '', 'initiator_id': '', 'brand_id': '', 'base_url': ''}
+    if current_env == 'custom':
+        current_env = 'test'
+    print(f"[Custom Credentials] Cleared — reverted to: {current_env}")
+    return jsonify({'cleared': True, 'environment': current_env})
 
 @app.route('/logs', methods=['GET'])
 def get_logs():

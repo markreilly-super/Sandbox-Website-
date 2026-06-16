@@ -82,6 +82,16 @@ const AccountPage = () => {
     };
   });
 
+  // Custom credentials
+  const [customCreds, setCustomCreds] = useState(() => {
+    const saved = localStorage.getItem('custom_credentials');
+    return saved ? JSON.parse(saved) : { api_key: '', initiator_id: '', brand_id: '', envType: 'test' };
+  });
+  const [customCredsActive, setCustomCredsActive] = useState(() => {
+    return localStorage.getItem('super_environment') === 'custom';
+  });
+  const [customCredsStatus, setCustomCredsStatus] = useState('');
+
   // Persist saved cards to localStorage whenever they change (keyed by environment)
   useEffect(() => {
     localStorage.setItem(`saved_cards_${environment}`, JSON.stringify(savedCards));
@@ -111,6 +121,37 @@ const AccountPage = () => {
     });
     // Reload so App.js re-loads the correct SDK scripts and state re-initialises from localStorage
     window.location.reload();
+  };
+
+  const handleApplyCustomCreds = async () => {
+    if (!customCreds.api_key || !customCreds.initiator_id || !customCreds.brand_id) {
+      setCustomCredsStatus('error:Please fill in all three fields.');
+      return;
+    }
+    localStorage.setItem('custom_credentials', JSON.stringify(customCreds));
+    localStorage.setItem('super_environment', 'custom');
+    const res = await fetch(`${API_BASE}/custom-credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customCreds),
+    });
+    if (res.ok) {
+      setCustomCredsActive(true);
+      setCustomCredsStatus('success:Custom credentials applied.');
+    } else {
+      setCustomCredsStatus('error:Failed to apply credentials.');
+    }
+  };
+
+  const handleClearCustomCreds = async () => {
+    localStorage.removeItem('custom_credentials');
+    if (localStorage.getItem('super_environment') === 'custom') {
+      localStorage.setItem('super_environment', 'test');
+    }
+    setCustomCreds({ api_key: '', initiator_id: '', brand_id: '', envType: 'test' });
+    setCustomCredsActive(false);
+    setCustomCredsStatus('');
+    await fetch(`${API_BASE}/custom-credentials`, { method: 'DELETE' });
   };
 
   /**
@@ -448,6 +489,80 @@ const AccountPage = () => {
           </div>
         )}
       </div>
+
+      {/* Custom Credentials — spans full width below the 3-column grid */}
+      <div style={{ gridColumn: '1 / -1', backgroundColor: '#f9f9f9', padding: '25px', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+          <h2 style={{ margin: 0, fontSize: '16px' }}>Custom Credentials</h2>
+          {customCredsActive && (
+            <span style={{ padding: '2px 10px', backgroundColor: '#e8f5e9', border: '1px solid #4CAF50', borderRadius: '20px', fontSize: '12px', color: '#2e7d32', fontWeight: 'bold' }}>
+              Active
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#666' }}>
+          Enter credentials for a custom account. Choose which base URL to use, then click Apply.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+          <div>
+            <label style={{ ...labelStyle, display: 'block' }}>Secret Key</label>
+            <input
+              style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '12px' }}
+              placeholder="sk_test_... or sk_stag_..."
+              value={customCreds.api_key}
+              onChange={e => setCustomCreds({ ...customCreds, api_key: e.target.value })}
+            />
+          </div>
+          <div>
+            <label style={{ ...labelStyle, display: 'block' }}>Initiator ID</label>
+            <input
+              style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '12px' }}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              value={customCreds.initiator_id}
+              onChange={e => setCustomCreds({ ...customCreds, initiator_id: e.target.value })}
+            />
+          </div>
+          <div>
+            <label style={{ ...labelStyle, display: 'block' }}>Brand ID</label>
+            <input
+              style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '12px' }}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              value={customCreds.brand_id}
+              onChange={e => setCustomCreds({ ...customCreds, brand_id: e.target.value })}
+            />
+          </div>
+          <div>
+            <label style={{ ...labelStyle, display: 'block' }}>Base URL</label>
+            <select
+              style={inputStyle}
+              value={customCreds.envType}
+              onChange={e => setCustomCreds({ ...customCreds, envType: e.target.value })}
+            >
+              <option value="test">Test</option>
+              <option value="staging">Staging</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '14px', alignItems: 'center' }}>
+          <button onClick={handleApplyCustomCreds} style={{ ...btnStyle, margin: 0 }}>
+            Apply
+          </button>
+          <button
+            onClick={handleClearCustomCreds}
+            style={{ ...btnStyle, margin: 0, backgroundColor: '#fff', color: '#e53935', border: '1px solid #e53935' }}
+          >
+            Clear
+          </button>
+          {customCredsStatus && (
+            <span style={{ fontSize: '13px', color: customCredsStatus.startsWith('success') ? '#2e7d32' : '#e53935' }}>
+              {customCredsStatus.split(':')[1]}
+            </span>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 };
