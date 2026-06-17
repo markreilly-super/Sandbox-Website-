@@ -125,6 +125,15 @@ def api_request(method, url, headers, json_body=None):
     _add_log(entry)
     return resp
 
+# Apple Pay domain verification file — must be served as text/plain, never as a download
+@app.route('/.well-known/apple-developer-merchantid-domain-association')
+def apple_pay_domain_association():
+    well_known_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build', '.well-known')
+    if not os.path.isdir(well_known_dir):
+        # Fall back to the public/ source folder when the build doesn't exist (local dev)
+        well_known_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'public', '.well-known')
+    return send_from_directory(well_known_dir, 'apple-developer-merchantid-domain-association', mimetype='text/plain')
+
 # Webhook endpoint to receive payment status updates from Super Payments
 @app.route('/payment', methods=['POST'])
 def webhooks():

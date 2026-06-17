@@ -6,7 +6,7 @@ services:
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120
     buildFilter:
       paths:
         - backend/**
@@ -35,6 +35,9 @@ services:
         name: Content-Disposition
         value: inline
     routes:
+      - type: rewrite
+        source: /.well-known/apple-developer-merchantid-domain-association
+        destination: /.well-known/apple-developer-merchantid-domain-association
       - type: rewrite
         source: /*
         destination: /index.html
