@@ -112,6 +112,32 @@ const AccountPage = () => {
     return () => clearInterval(check);
   }, [sessionToken]);
 
+  // Register Apple Pay / Google Pay express button handler for <super-card>.
+  // Must be registered BEFORE <super-card> renders so the SDK can show wallet buttons.
+  // Poll for window.superCard as soon as the sessionToken exists — don't wait for isSdkReady.
+  useEffect(() => {
+    if (!sessionToken) return;
+
+    const register = () => {
+      if (!window.superCard?.registerWalletPaymentHandler) return false;
+      window.superCard.registerWalletPaymentHandler(async () => {
+        try {
+          await handleSaveCard();
+        } catch (err) {
+          console.error('Wallet payment handler error:', err);
+        }
+      });
+      console.log('✅ superCard wallet payment handler registered');
+      return true;
+    };
+
+    if (!register()) {
+      const interval = setInterval(() => { if (register()) clearInterval(interval); }, 100);
+      return () => clearInterval(interval);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionToken]);
+
   const handleEnvironmentChange = async (newEnv) => {
     localStorage.setItem('super_environment', newEnv);
     await fetch(`${API_BASE}/set-environment`, {
