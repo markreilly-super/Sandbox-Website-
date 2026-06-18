@@ -101,8 +101,8 @@ const CheckoutPage = () => {
     if (!checkoutSessionId) return;
 
     const register = () => {
-      if (!window.superCheckout?.registerWalletsHandler) return false;
-      window.superCheckout.registerWalletsHandler(async () => {
+      if (!window.superCheckout?.registerWalletPaymentHandler) return false;
+      window.superCheckout.registerWalletPaymentHandler(async () => {
         try {
           const bd = billingDetailsRef.current;
           const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
@@ -121,7 +121,7 @@ const CheckoutPage = () => {
           console.error('Wallets handler error:', err);
         }
       });
-      console.log('✅ Wallets handler registered');
+      console.log('✅ Wallet payment handler registered');
       return true;
     };
 
