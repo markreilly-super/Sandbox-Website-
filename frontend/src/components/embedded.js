@@ -345,14 +345,15 @@ const CheckoutPage = () => {
         <h2 style={{ fontSize: '1.4rem', marginBottom: '25px' }}>Embedded Checkout</h2>
         {sessionToken ? (
           <>
-            <super-checkout 
-              key={refreshKey} 
-              amount="15000" 
+            <super-checkout
+              key={refreshKey}
+              amount="15000"
               checkout-session-token={sessionToken}
               title={sdkConfig.title}
               subtitle={sdkConfig.subtitle}
               payment-methods-order={sdkConfig.paymentMethodsOrder}
               pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
+              support-express-wallets="true"
             />
 
             {isSdkReady && (
