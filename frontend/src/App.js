@@ -12,7 +12,6 @@ import HomePage from './components/home';
 import RequestLog from './components/requestLog';
 import InitialPayOffSession from './components/initialPayOffSession';
 import TokenCheckout from './components/tokenCheckout';
-import StripePage from './components/stripePage';
 import WebhookLog from './components/webhookLog';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,7 +147,6 @@ const App = () => {
         <Route path="/logs" element={<RequestLog />} />
         <Route path="/initial-pay" element={<InitialPayOffSession />} />
         <Route path="/token-checkout" element={<TokenCheckout />} />
-        <Route path="/stripe" element={<StripePage />} />
         <Route path="/webhooks" element={<WebhookLog />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
