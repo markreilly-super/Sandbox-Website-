@@ -59,6 +59,20 @@ const AccountPage = () => {
     return localStorage.getItem('super_environment') || 'test';
   });
 
+  // SDK debug logging toggle
+  const [debugEnabled, setDebugEnabled] = useState(() => {
+    return localStorage.getItem('_debug_') === 'true';
+  });
+
+  const handleToggleDebug = () => {
+    if (debugEnabled) {
+      localStorage.removeItem('_debug_');
+    } else {
+      localStorage.setItem('_debug_', true);
+    }
+    window.location.reload();
+  };
+
   // Customer ID persisted in localStorage per environment
   const [customerId, setCustomerId] = useState(() => {
     const env = localStorage.getItem('super_environment') || 'test';
@@ -377,6 +391,24 @@ const AccountPage = () => {
             }}
           >
             Staging
+          </button>
+        </div>
+
+        {/* SDK Debug Logs toggle */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+          <p style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: '600', color: '#555' }}>SDK Debug Logs</p>
+          <button
+            onClick={handleToggleDebug}
+            style={{
+              width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid',
+              borderColor: debugEnabled ? '#f57c00' : '#ddd',
+              backgroundColor: debugEnabled ? '#fff3e0' : '#fff',
+              fontWeight: 'bold', cursor: 'pointer',
+              color: debugEnabled ? '#e65100' : '#555',
+              fontSize: '12px',
+            }}
+          >
+            {debugEnabled ? '🟠 Logs On' : '⚪ Logs Off'}
           </button>
         </div>
       </div>
