@@ -316,12 +316,12 @@ const CheckoutPage = () => {
   const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', padding: '40px', maxWidth: '1300px', margin: '0 auto', fontFamily: 'Arial' }}>
+    <div className="layout-two-col">
       
       {/* LEFT COLUMN: BILLING FORM */}
       <div>
         <h2 style={{ fontSize: '1.4rem', borderBottom: '2px solid #000', paddingBottom: '10px' }}>Billing Address</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '20px' }}>
+        <div className="form-grid-two-col" style={{ marginTop: '20px' }}>
           <input placeholder="First Name" style={inputStyle} value={billingDetails.firstName} onChange={e => setBillingDetails({...billingDetails, firstName: e.target.value})} />
           <input placeholder="Last Name" style={inputStyle} value={billingDetails.lastName} onChange={e => setBillingDetails({...billingDetails, lastName: e.target.value})} />
           <input placeholder="Email" style={{...inputStyle, gridColumn: 'span 2'}} value={billingDetails.email} onChange={e => setBillingDetails({...billingDetails, email: e.target.value})} />

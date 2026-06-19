@@ -53,7 +53,7 @@ const MarketingPage = () => {
   const labelStyle = { fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' };
 
   return (
-    <div style={{ padding: '40px' }}>
+    <div className="layout-page">
       <h1>Marketing Assets Customizer</h1>
 
       {/* DEBUG LOG PANEL */}

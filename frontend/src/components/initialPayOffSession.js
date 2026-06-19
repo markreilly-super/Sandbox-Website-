@@ -228,7 +228,7 @@ const InitialPayOffSession = () => {
   const isFormDisabled = step > 0;
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1300px', margin: '0 auto', fontFamily: 'Arial' }}>
+    <div className="layout-page">
 
       {/* Staging notice */}
       <div style={{
@@ -238,7 +238,7 @@ const InitialPayOffSession = () => {
         Environment is controlled by your selection on the <strong>Account Settings</strong> page.
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+      <div className="layout-two-col" style={{ padding: 0 }}>
 
         {/* LEFT: customer details + step tracker */}
         <div>
@@ -271,7 +271,7 @@ const InitialPayOffSession = () => {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="form-grid-two-col">
             <input
               placeholder="First Name" style={inputStyle} disabled={isFormDisabled}
               value={billingDetails.firstName}

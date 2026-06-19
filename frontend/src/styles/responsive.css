@@ -1,0 +1,161 @@
+/* ── Responsive Layout Utilities ─────────────────────────────────────── */
+
+/* Two-column page layout (billing + checkout side by side) */
+.layout-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  padding: 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+}
+
+/* Three-column account page */
+.layout-three-col {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+  padding: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+}
+
+/* Standard page wrapper (single column pages) */
+.layout-page {
+  padding: 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+}
+
+/* Two-column form grid (first/last name side by side) */
+.form-grid-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Four-column home card grid */
+.home-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* Custom credentials 4-col grid */
+.creds-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+/* Sidebar layout (deposit / saved card pages) */
+.sidebar-layout {
+  display: flex;
+  min-height: calc(100vh - 54px);
+}
+
+.sidebar-panel {
+  width: 380px;
+  min-width: 300px;
+  flex-shrink: 0;
+}
+
+/* ── Mobile breakpoint: 768px ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  .layout-two-col,
+  .layout-three-col {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 16px;
+  }
+
+  .layout-page {
+    padding: 16px;
+  }
+
+  /* Override span-2 columns in form grids on mobile */
+  .form-grid-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid-two-col > * {
+    grid-column: span 1 !important;
+  }
+
+  .home-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .creds-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-layout {
+    flex-direction: column;
+  }
+
+  .sidebar-panel {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Navbar mobile ───────────────────────────────────────────────────── */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.navbar-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .navbar-hamburger {
+    display: block;
+  }
+
+  .navbar-links {
+    display: none;
+    position: absolute;
+    top: 54px;
+    left: 0;
+    right: 0;
+    background-color: #1a1a1a;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    z-index: 1000;
+    border-top: 1px solid #333;
+  }
+
+  .navbar-links.open {
+    display: flex;
+  }
+
+  .navbar-links a,
+  .navbar-links > div {
+    padding: 14px 20px !important;
+    border-bottom: 1px solid #333;
+  }
+}

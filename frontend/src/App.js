@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './styles/responsive.css';
 import NavBar from './components/navBar';
 import EmbeddedPage from './components/embedded';
 import MarketingPage from './components/marketing';

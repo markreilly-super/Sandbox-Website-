@@ -121,7 +121,7 @@ const WebhookLog = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#f0f2f5', minHeight: 'calc(100vh - 54px)', padding: '32px 40px', boxSizing: 'border-box' }}>
+    <div className="layout-page" style={{ backgroundColor: '#f0f2f5', minHeight: 'calc(100vh - 54px)', boxSizing: 'border-box' }}>
       <div style={{
         backgroundColor: C.bg,
         borderRadius: '12px',

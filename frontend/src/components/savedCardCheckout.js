@@ -66,9 +66,9 @@ const SavedCardCheckout = () => {
   };
 
   return (
-    <div style={styles.page}>
+    <div className="sidebar-layout" style={{ fontFamily: "'Segoe UI', Arial, sans-serif" }}>
       {/* ── Left: Order Summary ── */}
-      <div style={styles.summary}>
+      <div className="sidebar-panel" style={{ backgroundColor: '#f6f9fc', borderRight: '1px solid #e4e9f0', display: 'flex', justifyContent: 'flex-end', padding: 'clamp(24px, 5vw, 60px) clamp(16px, 4vw, 40px)' }}>
         <div style={styles.summaryInner}>
           <p style={styles.merchantLabel}>Super Integration</p>
           <h1 style={styles.totalAmount}>{ORDER.display}</h1>
@@ -283,7 +283,7 @@ const styles = {
     flex: 1,
     display: 'flex',
     justifyContent: 'flex-start',
-    padding: '60px 60px',
+    padding: 'clamp(24px, 5vw, 60px)',
     backgroundColor: '#fff',
   },
   paymentInner: {

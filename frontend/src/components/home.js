@@ -78,7 +78,7 @@ const HomePage = () => {
         {/* ── Nav cards ── */}
         <section style={s.section}>
           <h2 style={s.sectionTitle}>Tools</h2>
-          <div style={s.cardGrid}>
+          <div className="home-card-grid">
             {NAV_CARDS.map(card => (
               <Link key={card.to} to={card.to} style={s.navCard(card.color, card.bg)}>
                 <span style={s.cardIcon}>{card.icon}</span>
@@ -122,7 +122,7 @@ const HomePage = () => {
           </section>
 
           {/* ── Quick links ── */}
-          <section style={{ ...s.section, width: '280px', flexShrink: 0 }}>
+          <section style={{ ...s.section, width: 'min(280px, 100%)', flexShrink: 0 }}>
             <h2 style={s.sectionTitle}>Resources</h2>
             <div style={s.linksList}>
               {QUICK_LINKS.map(link => (
@@ -162,7 +162,7 @@ const s = {
   // Hero
   hero: {
     backgroundColor: '#1a1a2e',
-    padding: '60px 40px',
+    padding: 'clamp(24px, 5vw, 60px) clamp(16px, 4vw, 40px)',
   },
   heroInner: {
     maxWidth: '860px',

@@ -349,7 +349,7 @@ const AccountPage = () => {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Arial', display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: '40px', alignItems: 'start' }}>
+    <div className="layout-three-col">
       {/* Environment Section */}
       <div style={{ backgroundColor: '#f9f9f9', padding: '25px', borderRadius: '12px', minWidth: '130px' }}>
         <h2 style={{ marginTop: 0, marginBottom: '15px', fontSize: '16px' }}>Environment</h2>
@@ -505,7 +505,7 @@ const AccountPage = () => {
           Enter credentials for a custom account. Choose which base URL to use, then click Apply.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+        <div className="creds-grid">
           <div>
             <label style={{ ...labelStyle, display: 'block' }}>Secret Key</label>
             <input

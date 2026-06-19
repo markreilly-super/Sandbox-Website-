@@ -174,10 +174,10 @@ const DepositFlow = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div style={s.page}>
+    <div className="sidebar-layout" style={{ fontFamily: "'Segoe UI', Arial, sans-serif" }}>
 
       {/* ── Left: Summary panel ── */}
-      <div style={s.summary}>
+      <div className="sidebar-panel" style={{ backgroundColor: '#f6f9fc', borderRight: '1px solid #e4e9f0', display: 'flex', justifyContent: 'flex-end', padding: 'clamp(24px, 5vw, 60px) clamp(16px, 4vw, 40px)', boxSizing: 'border-box' }}>
         <div style={s.summaryInner}>
           <p style={s.merchantLabel}>Super Integration</p>
           <h1 style={s.heading}>Deposit &amp; Pay</h1>
@@ -474,7 +474,7 @@ const s = {
   // Right panel
   panel: {
     flex: 1, display: 'flex', justifyContent: 'flex-start',
-    padding: '60px', backgroundColor: '#fff',
+    padding: 'clamp(24px, 5vw, 60px)', backgroundColor: '#fff',
   },
   panelInner: { width: '100%', maxWidth: '420px' },
   panelTitle: { fontSize: '22px', fontWeight: '700', color: '#1a1a2e', margin: '0 0 6px' },
