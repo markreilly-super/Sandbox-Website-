@@ -41,6 +41,7 @@ const InitialPayOffSession = () => {
   useEffect(() => { billingDetailsRef.current = billingDetails; }, [billingDetails]);
 
   const bnplObserverRef = useRef(null);
+  const walletsListenerAdded = useRef(false);
 
   const triggerCustomPhoneNumberEvent = useCallback((phoneNumber) => {
     const el = document.querySelector('super-checkout');
@@ -67,40 +68,41 @@ const InitialPayOffSession = () => {
 
   // Register Apple Pay / Google Pay express button handler.
   // Must be registered BEFORE <super-checkout> renders so the SDK can show wallet buttons.
-  // Poll for window.superCheckout as soon as the session exists — don't wait for isSdkReady.
+  // Follows the official docs pattern: poll every 500ms with a listenerAdded guard.
   useEffect(() => {
     if (!checkoutSessionId) return;
+    walletsListenerAdded.current = false;
 
-    const register = () => {
-      if (!window.superCheckout?.registerWalletsHandler) return false;
-      window.superCheckout.registerWalletsHandler(async () => {
-        try {
-          const bd = billingDetailsRef.current;
-          const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              amount: 15000,
-              email: bd.email,
-              phone: bd.phoneNumber,
-              externalReference: `ORDER_${Date.now()}`,
-              customerId,
-            }),
-          });
-          const proceedData = await response.json();
-          if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
-        } catch (err) {
-          console.error('Wallets handler error:', err);
-        }
-      });
-      console.log('✅ Wallets handler registered');
-      return true;
-    };
+    const interval = setInterval(() => {
+      if (window.superCheckout && !walletsListenerAdded.current) {
+        walletsListenerAdded.current = true;
+        clearInterval(interval);
 
-    if (!register()) {
-      const interval = setInterval(() => { if (register()) clearInterval(interval); }, 100);
-      return () => clearInterval(interval);
-    }
+        window.superCheckout.registerWalletsHandler(async () => {
+          try {
+            const bd = billingDetailsRef.current;
+            const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                amount: 15000,
+                email: bd.email,
+                phone: bd.phoneNumber,
+                externalReference: `ORDER_${Date.now()}`,
+                customerId,
+              }),
+            });
+            const proceedData = await response.json();
+            if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
+          } catch (err) {
+            console.error('Wallets handler error:', err);
+          }
+        });
+        console.log('✅ Wallets handler registered');
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
   }, [checkoutSessionId, customerId]);
 
   // MutationObserver for BNPL phone injection (same pattern as embedded.js)
