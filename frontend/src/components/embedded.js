@@ -101,8 +101,8 @@ const CheckoutPage = () => {
     if (!checkoutSessionId) return;
 
     const register = () => {
-      if (!window.superCheckout?.registerWalletPaymentHandler) return false;
-      window.superCheckout.registerWalletPaymentHandler(async () => {
+      if (!window.superCheckout?.registerWalletsHandler) return false;
+      window.superCheckout.registerWalletsHandler(async () => {
         try {
           const bd = billingDetailsRef.current;
           const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
