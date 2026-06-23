@@ -107,23 +107,23 @@ const App = () => {
   const sdkConfig = SDK_CONFIG[sdkEnv] || SDK_CONFIG.test;
 
   useEffect(() => {
-    // 1. Load Marketing Assets Script (super.js) - temporarily disabled to test if payment.js alone is sufficient
-    // if (!document.getElementById('super-js-sdk')) {
-    //   const marketingScript = document.createElement('script');
-    //   marketingScript.id = 'super-js-sdk';
-    //   marketingScript.src = `https://cdn.superpayments.com/js/${sdkEnv}/super.js`;
-    //   marketingScript.async = true;
-    //   marketingScript.onload = () => {
-    //     if (window.superjs) {
-    //       window.superjs.init(sdkConfig.publicKey, {
-    //         integrationId: sdkConfig.integrationId,
-    //         platform: 'custom',
-    //         page: 'cart'
-    //       });
-    //     }
-    //   };
-    //   document.body.appendChild(marketingScript);
-    // }
+    // 1. Load Marketing Assets Script (super.js)
+    if (!document.getElementById('super-js-sdk')) {
+      const marketingScript = document.createElement('script');
+      marketingScript.id = 'super-js-sdk';
+      marketingScript.src = `https://cdn.superpayments.com/js/${sdkEnv}/super.js`;
+      marketingScript.async = true;
+      marketingScript.onload = () => {
+        if (window.superjs) {
+          window.superjs.init(sdkConfig.publicKey, {
+            integrationId: sdkConfig.integrationId,
+            platform: 'custom',
+            page: 'cart'
+          });
+        }
+      };
+      document.body.appendChild(marketingScript);
+    }
 
     // 2. Load Embedded Checkout Script (payment.js)
     if (!document.getElementById('super-payment-sdk')) {
