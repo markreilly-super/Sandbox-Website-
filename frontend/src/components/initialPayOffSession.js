@@ -354,6 +354,8 @@ const InitialPayOffSession = () => {
                 checkout-session-token={sessionToken}
                 title={sdkConfig.title}
                 subtitle={sdkConfig.subtitle}
+                payment-methods-order={sdkConfig.paymentMethodsOrder}
+                pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
               />
               {isSdkReady && (
                 <button
