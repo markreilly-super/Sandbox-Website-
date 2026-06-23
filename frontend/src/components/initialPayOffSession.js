@@ -356,7 +356,6 @@ const InitialPayOffSession = () => {
                 subtitle={sdkConfig.subtitle}
                 payment-methods-order={sdkConfig.paymentMethodsOrder}
                 pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
-                support-express-wallets="true"
               />
               {isSdkReady && (
                 <button
