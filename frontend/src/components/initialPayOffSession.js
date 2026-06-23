@@ -59,7 +59,7 @@ const InitialPayOffSession = () => {
     const interval = setInterval(() => {
       if (window.superCheckout?.submit) {
         setIsSdkReady(true);
-        // triggerCustomPhoneNumberEvent(billingDetails.phoneNumber); // temporarily removed for testing
+        triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
         clearInterval(interval);
       }
     }, 500);
