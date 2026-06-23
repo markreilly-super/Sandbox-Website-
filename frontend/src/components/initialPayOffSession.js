@@ -59,12 +59,11 @@ const InitialPayOffSession = () => {
     const interval = setInterval(() => {
       if (window.superCheckout?.submit) {
         setIsSdkReady(true);
-        triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
         clearInterval(interval);
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [sessionToken, triggerCustomPhoneNumberEvent, billingDetails.phoneNumber]);
+  }, [sessionToken]);
 
   // Register Apple Pay / Google Pay express button handler.
   // Must be registered BEFORE <super-checkout> renders so the SDK can show wallet buttons.
@@ -109,32 +108,15 @@ const InitialPayOffSession = () => {
   useEffect(() => {
     if (!sessionToken) return;
     let pollInterval;
-    const attachObserver = (shadowRoot) => {
-      if (bnplObserverRef.current) bnplObserverRef.current.disconnect();
-      const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          for (const node of mutation.addedNodes) {
-            if (node.nodeType !== Node.ELEMENT_NODE) continue;
-            const isSuperCredit =
-              node.id === 'super-credit-container' ||
-              node.querySelector?.('#super-credit-container') ||
-              node.querySelector?.('[data-testid="super-credit-step-authentication"]');
-            if (isSuperCredit) triggerCustomPhoneNumberEvent(phoneRef.current);
-          }
-        }
-      });
-      observer.observe(shadowRoot, { childList: true, subtree: true });
-      bnplObserverRef.current = observer;
-    };
     pollInterval = setInterval(() => {
       const el = document.querySelector('super-checkout');
-      if (el?.shadowRoot) { clearInterval(pollInterval); attachObserver(el.shadowRoot); }
+      if (el?.shadowRoot) { clearInterval(pollInterval); }
     }, 200);
     return () => {
       clearInterval(pollInterval);
       if (bnplObserverRef.current) { bnplObserverRef.current.disconnect(); bnplObserverRef.current = null; }
     };
-  }, [sessionToken, triggerCustomPhoneNumberEvent]);
+  }, [sessionToken]);
 
   const handleInitialize = async () => {
     setLoading(true);
