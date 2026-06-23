@@ -59,7 +59,7 @@ const InitialPayOffSession = () => {
     const interval = setInterval(() => {
       if (window.superCheckout?.submit) {
         setIsSdkReady(true);
-        triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
+        // triggerCustomPhoneNumberEvent(billingDetails.phoneNumber); // temporarily removed for testing
         clearInterval(interval);
       }
     }, 500);
@@ -352,11 +352,6 @@ const InitialPayOffSession = () => {
                 key={sessionToken}
                 amount="15000"
                 checkout-session-token={sessionToken}
-                title={sdkConfig.title}
-                subtitle={sdkConfig.subtitle}
-                payment-methods-order={sdkConfig.paymentMethodsOrder}
-                pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
-                support-express-wallets="true"
               />
               {isSdkReady && (
                 <button
