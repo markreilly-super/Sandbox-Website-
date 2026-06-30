@@ -101,7 +101,7 @@ const SDK_CONFIG = {
     integrationId: '39733f1a-8a06-47e2-9fdb-38c5c78662eb',
   },
   production: {
-    publicKey: '', // TODO: add production public key (pk_prod_...)
+    publicKey: null, // no public key — marketing assets not used in production
     integrationId: '6f3480aa-9739-4cc4-8848-52296f6a923f',
   },
 };
@@ -118,7 +118,7 @@ const App = () => {
       marketingScript.src = `https://cdn.superpayments.com/js/${sdkEnv}/super.js`;
       marketingScript.async = true;
       marketingScript.onload = () => {
-        if (window.superjs) {
+        if (window.superjs && sdkConfig.publicKey) {
           window.superjs.init(sdkConfig.publicKey, {
             integrationId: sdkConfig.integrationId,
             platform: 'custom',
