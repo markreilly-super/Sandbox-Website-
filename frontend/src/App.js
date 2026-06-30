@@ -106,16 +106,23 @@ const SDK_CONFIG = {
   },
 };
 
+const CDN_URLS = {
+  test:       { superJs: 'https://cdn.superpayments.com/js/test/super.js',       paymentJs: 'https://cdn.superpayments.com/js/test/payment.js' },
+  staging:    { superJs: 'https://cdn.superpayments.com/js/staging/super.js',    paymentJs: 'https://cdn.superpayments.com/js/staging/payment.js' },
+  production: { superJs: 'https://cdn.superpayments.com/js/super.js',            paymentJs: 'https://cdn.superpayments.com/js/payment.js' },
+};
+
 const App = () => {
   const sdkEnv = localStorage.getItem('super_environment') || 'test';
   const sdkConfig = SDK_CONFIG[sdkEnv] || SDK_CONFIG.test;
+  const cdnUrls = CDN_URLS[sdkEnv] || CDN_URLS.test;
 
   useEffect(() => {
     // 1. Load Marketing Assets Script (super.js)
     if (!document.getElementById('super-js-sdk')) {
       const marketingScript = document.createElement('script');
       marketingScript.id = 'super-js-sdk';
-      marketingScript.src = `https://cdn.superpayments.com/js/${sdkEnv}/super.js`;
+      marketingScript.src = cdnUrls.superJs;
       marketingScript.async = true;
       marketingScript.onload = () => {
         if (window.superjs && sdkConfig.publicKey) {
@@ -133,7 +140,7 @@ const App = () => {
     if (!document.getElementById('super-payment-sdk')) {
       const paymentScript = document.createElement('script');
       paymentScript.id = 'super-payment-sdk';
-      paymentScript.src = `https://cdn.superpayments.com/js/${sdkEnv}/payment.js`;
+      paymentScript.src = cdnUrls.paymentJs;
       paymentScript.async = true;
       document.body.appendChild(paymentScript);
     }
