@@ -42,6 +42,12 @@ CREDENTIALS = {
         'brand_id': "60202016-cada-4832-b792-ff3710b5c4ce",
         'base_url': "https://api.staging.superpayments.com/2026-04-01"
     },
+    'production': {
+        'api_key': os.environ.get('SUPER_PROD_API_KEY', ''),
+        'initiator_id': os.environ.get('SUPER_PROD_INITIATOR_ID', ''),
+        'brand_id': os.environ.get('SUPER_PROD_BRAND_ID', ''),
+        'base_url': "https://api.superpayments.com/2026-04-01"
+    },
     'custom': {
         'api_key': '',
         'initiator_id': '',

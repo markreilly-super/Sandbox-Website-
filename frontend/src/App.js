@@ -100,6 +100,10 @@ const SDK_CONFIG = {
     publicKey: 'pk_stag_KGQ2yHCbOPDg8YMi_22SYfis4gSay7aPXzWe5UzH',
     integrationId: '39733f1a-8a06-47e2-9fdb-38c5c78662eb',
   },
+  production: {
+    publicKey: process.env.REACT_APP_SUPER_PROD_PUBLIC_KEY || '',
+    integrationId: process.env.REACT_APP_SUPER_PROD_INTEGRATION_ID || '',
+  },
 };
 
 const App = () => {

@@ -392,6 +392,18 @@ const AccountPage = () => {
           >
             Staging
           </button>
+          <button
+            onClick={() => environment !== 'production' && handleEnvironmentChange('production')}
+            style={{
+              padding: '10px', borderRadius: '8px', border: '2px solid',
+              borderColor: environment === 'production' ? '#b71c1c' : '#ddd',
+              backgroundColor: environment === 'production' ? '#ffebee' : '#fff',
+              fontWeight: 'bold', cursor: environment === 'production' ? 'default' : 'pointer',
+              color: environment === 'production' ? '#b71c1c' : '#555'
+            }}
+          >
+            Production
+          </button>
         </div>
 
         {/* SDK Debug Logs toggle */}
@@ -574,6 +586,7 @@ const AccountPage = () => {
             >
               <option value="test">Test</option>
               <option value="staging">Staging</option>
+              <option value="production">Production</option>
             </select>
           </div>
         </div>
