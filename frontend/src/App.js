@@ -101,15 +101,15 @@ const SDK_CONFIG = {
     integrationId: '39733f1a-8a06-47e2-9fdb-38c5c78662eb',
   },
   production: {
-    publicKey: null, // no public key — marketing assets not used in production
-    integrationId: '6f3480aa-9739-4cc4-8848-52296f6a923f',
+    publicKey: null,
+    integrationId: process.env.REACT_APP_SUPER_PROD_INTEGRATION_ID || '',
   },
 };
 
 const CDN_URLS = {
   test:       { superJs: 'https://cdn.superpayments.com/js/test/super.js',       paymentJs: 'https://cdn.superpayments.com/js/test/payment.js' },
   staging:    { superJs: 'https://cdn.superpayments.com/js/staging/super.js',    paymentJs: 'https://cdn.superpayments.com/js/staging/payment.js' },
-  production: { superJs: 'https://cdn.superpayments.com/js/super.js',            paymentJs: 'https://cdn.superpayments.com/js/payment.js' },
+  production: { superJs: 'https://cdn.superpayments.com/js/production/super.js', paymentJs: 'https://cdn.superpayments.com/js/payment.js' },
 };
 
 const App = () => {

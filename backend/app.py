@@ -43,9 +43,9 @@ CREDENTIALS = {
         'base_url': "https://api.staging.superpayments.com/2026-04-01"
     },
     'production': {
-        'api_key': "sk_prod_iVwRdRvNcHnwpFdrcDLV1i_i8SFb6NcXlnfI-auK",
-        'initiator_id': "6f3480aa-9739-4cc4-8848-52296f6a923f",
-        'brand_id': "7e47065f-b26c-47a5-9757-e4e7ec3c43ed",
+        'api_key': os.environ.get('SUPER_PROD_API_KEY', ''),
+        'initiator_id': os.environ.get('SUPER_PROD_INITIATOR_ID', ''),
+        'brand_id': os.environ.get('SUPER_PROD_BRAND_ID', ''),
         'base_url': "https://api.superpayments.com/2026-04-01"
     },
     'custom': {
