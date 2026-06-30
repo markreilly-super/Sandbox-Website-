@@ -101,8 +101,8 @@ const SDK_CONFIG = {
     integrationId: '39733f1a-8a06-47e2-9fdb-38c5c78662eb',
   },
   production: {
-    publicKey: process.env.REACT_APP_SUPER_PROD_PUBLIC_KEY || '',
-    integrationId: process.env.REACT_APP_SUPER_PROD_INTEGRATION_ID || '',
+    publicKey: '', // TODO: add production public key (pk_prod_...)
+    integrationId: '6f3480aa-9739-4cc4-8848-52296f6a923f',
   },
 };
 
