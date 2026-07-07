@@ -521,7 +521,7 @@ const AccountPage = () => {
           </button>
         ) : (
           <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '12px' }}>
-            <super-card session-token={sessionToken}></super-card>
+            <super-card session-token={sessionToken} test-use-otp="true"></super-card>
             <button
               onClick={handleSaveCard}
               disabled={submitting}
