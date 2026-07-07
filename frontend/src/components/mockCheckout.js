@@ -745,7 +745,7 @@ const MockCheckout = () => {
             )}
           </div>
           {error && <p style={{ color: '#e53935', fontSize: '14px', marginBottom: '12px' }}>{error}</p>}
-          {isCardSdkReady && (
+          {sessionToken && (
             <button
               style={{ ...primaryBtn, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
               onClick={handleSaveCard}
