@@ -522,15 +522,13 @@ const AccountPage = () => {
         ) : (
           <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '12px' }}>
             <super-card session-token={sessionToken} test-use-otp="true"></super-card>
-            {isSdkReady && (
-              <button
-                onClick={handleSaveCard}
-                disabled={submitting}
-                style={{ ...btnStyle, marginTop: '15px', backgroundColor: '#000', color: '#fff' }}
-              >
-                {submitting ? 'Saving...' : 'Save Card'}
-              </button>
-            )}
+            <button
+              onClick={handleSaveCard}
+              disabled={submitting}
+              style={{ ...btnStyle, marginTop: '15px', backgroundColor: '#000', color: '#fff' }}
+            >
+              {submitting ? 'Saving...' : 'Save Card'}
+            </button>
           </div>
         )}
       </div>
