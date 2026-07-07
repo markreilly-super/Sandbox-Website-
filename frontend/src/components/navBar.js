@@ -141,6 +141,15 @@ const NavBar = () => {
               >
                 Token Checkout
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/mock-checkout"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                Mock Checkout
+              </Link>
             </div>
           )}
         </div>
