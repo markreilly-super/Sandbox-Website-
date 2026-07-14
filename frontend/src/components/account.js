@@ -92,7 +92,8 @@ const AccountPage = () => {
     return saved ? JSON.parse(saved) : {
       paymentMethodsOrder: 'BNPL,CARD,OPEN_BANKING',
       preSelectedPaymentMethod: 'CARD',
-      title: 'Secure Checkout'
+      title: 'Secure Checkout',
+      amount: 15000,
     };
   });
 
@@ -438,6 +439,18 @@ const AccountPage = () => {
         </select>
         <label style={labelStyle}>Checkout Title</label>
         <input style={inputStyle} value={config.title} onChange={e => setConfig({...config, title: e.target.value})} />
+        <label style={labelStyle}>Amount (£)</label>
+        <div style={{ position: 'relative', marginBottom: '15px' }}>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: '#555' }}>£</span>
+          <input
+            style={{ ...inputStyle, paddingLeft: '24px', marginBottom: 0 }}
+            type="number"
+            min="0"
+            step="0.01"
+            value={(config.amount / 100).toFixed(2)}
+            onChange={e => setConfig({ ...config, amount: Math.round(parseFloat(e.target.value || 0) * 100) })}
+          />
+        </div>
         <button onClick={() => localStorage.setItem('sdk_config', JSON.stringify(config))} style={btnStyle}>Save Settings</button>
       </div>
 

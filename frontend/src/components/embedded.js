@@ -17,11 +17,15 @@ const CheckoutPage = () => {
   // Controls the "Place Order" button visibility based on the global SDK object
   const [isSdkReady, setIsSdkReady] = useState(false); 
 
-  const [sdkConfig, setSdkConfig] = useState({
-    paymentMethodsOrder: 'BNPL,CARD,OPEN_BANKING',
-    preSelectedPaymentMethod: 'CARD',
-    title: 'Secure Checkout',
-    subtitle: 'Pay with Super and earn cash rewards'
+  const [sdkConfig, setSdkConfig] = useState(() => {
+    const saved = localStorage.getItem('sdk_config');
+    return saved ? { ...JSON.parse(saved), subtitle: 'Pay with Super and earn cash rewards' } : {
+      paymentMethodsOrder: 'BNPL,CARD,OPEN_BANKING',
+      preSelectedPaymentMethod: 'CARD',
+      title: 'Secure Checkout',
+      subtitle: 'Pay with Super and earn cash rewards',
+      amount: 15000,
+    };
   });
 
   const [billingDetails, setBillingDetails] = useState({
@@ -114,7 +118,7 @@ const CheckoutPage = () => {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                amount: 15000,
+                amount: sdkConfig.amount,
                 email: bd.email,
                 phone: bd.phoneNumber,
                 externalReference: `ORDER_${Date.now()}`,
@@ -279,7 +283,7 @@ const CheckoutPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: 15000,
+          amount: sdkConfig.amount,
           email: billingDetails.email,
           phone: billingDetails.phoneNumber,
           externalReference: `ORDER_${Date.now()}`,
@@ -349,7 +353,7 @@ const CheckoutPage = () => {
           <>
             <super-checkout
               key={refreshKey}
-              amount="15000"
+              amount={String(sdkConfig.amount)}
               checkout-session-token={sessionToken}
               title={sdkConfig.title}
               subtitle={sdkConfig.subtitle}
