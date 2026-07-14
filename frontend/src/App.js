@@ -30,22 +30,23 @@ import MockCheckout from './components/mockCheckout';
   window.__superInterceptorSet = true;
   window.__stripeCardData = null;
 
-  const TARGET = /stripe\.com|superpayments\.com/;
+  const TARGET = /stripe\.com|superpayments\.com|adyen\.com/;
 
   // Recursively hunt for { last4, brand } inside any JSON object
+  // Handles both Stripe (last4) and Adyen (lastFour) field names
   const findCard = (obj, depth = 0) => {
     if (!obj || typeof obj !== 'object' || depth > 8) return null;
-    const l4 = obj.last4 ?? obj.Last4 ?? obj.last_four;
+    const l4 = obj.last4 ?? obj.Last4 ?? obj.last_four ?? obj.lastFour ?? obj.lastFourDigits;
     if (l4 && String(l4).replace(/\D/g, '').length === 4) {
       return {
         last4: String(l4).replace(/\D/g, ''),
-        brand: (obj.brand || obj.display_brand || obj.network || '').toUpperCase()
+        brand: (obj.brand || obj.display_brand || obj.network || obj.paymentMethod || obj.cardBrand || '').toUpperCase()
       };
     }
-    if (obj.card?.last4) {
+    if (obj.card?.last4 || obj.card?.lastFour) {
       return {
-        last4: String(obj.card.last4),
-        brand: (obj.card.brand || obj.card.display_brand || '').toUpperCase()
+        last4: String(obj.card.last4 || obj.card.lastFour),
+        brand: (obj.card.brand || obj.card.display_brand || obj.card.cardBrand || '').toUpperCase()
       };
     }
     for (const key of Object.keys(obj)) {

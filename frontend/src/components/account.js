@@ -17,12 +17,12 @@ const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
   const findCardData = (obj, depth = 0) => {
     if (!obj || typeof obj !== 'object' || depth > 6) return null;
-    const l4 = obj.last4 ?? obj.Last4 ?? obj.last_four;
+    const l4 = obj.last4 ?? obj.Last4 ?? obj.last_four ?? obj.lastFour ?? obj.lastFourDigits;
     if (l4 && String(l4).replace(/\D/g, '').length === 4) {
-      return { last4: String(l4).replace(/\D/g, ''), brand: (obj.brand || obj.display_brand || obj.network || '').toUpperCase() };
+      return { last4: String(l4).replace(/\D/g, ''), brand: (obj.brand || obj.display_brand || obj.network || obj.paymentMethod || obj.cardBrand || '').toUpperCase() };
     }
-    if (obj.card?.last4) {
-      return { last4: String(obj.card.last4), brand: (obj.card.brand || obj.card.display_brand || '').toUpperCase() };
+    if (obj.card?.last4 || obj.card?.lastFour) {
+      return { last4: String(obj.card.last4 || obj.card.lastFour), brand: (obj.card.brand || obj.card.display_brand || obj.card.cardBrand || '').toUpperCase() };
     }
     for (const key of Object.keys(obj)) {
       const found = findCardData(obj[key], depth + 1);
@@ -238,12 +238,12 @@ const AccountPage = () => {
     // Helper: recursively hunt for { last4, brand } in any object
     const findCard = (obj, depth = 0) => {
       if (!obj || typeof obj !== 'object' || depth > 8) return null;
-      const l4 = obj.last4 ?? obj.Last4 ?? obj.last_four;
+      const l4 = obj.last4 ?? obj.Last4 ?? obj.last_four ?? obj.lastFour ?? obj.lastFourDigits;
       if (l4 && String(l4).replace(/\D/g, '').length === 4) {
-        return { last4: String(l4).replace(/\D/g, ''), brand: (obj.brand || obj.display_brand || obj.network || '').toUpperCase() };
+        return { last4: String(l4).replace(/\D/g, ''), brand: (obj.brand || obj.display_brand || obj.network || obj.paymentMethod || obj.cardBrand || '').toUpperCase() };
       }
-      if (obj.card?.last4) {
-        return { last4: String(obj.card.last4), brand: (obj.card.brand || obj.card.display_brand || '').toUpperCase() };
+      if (obj.card?.last4 || obj.card?.lastFour) {
+        return { last4: String(obj.card.last4 || obj.card.lastFour), brand: (obj.card.brand || obj.card.display_brand || obj.card.cardBrand || '').toUpperCase() };
       }
       for (const key of Object.keys(obj)) {
         const hit = findCard(obj[key], depth + 1);
