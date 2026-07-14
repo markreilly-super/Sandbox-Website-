@@ -16,12 +16,17 @@ const InitialPayOffSession = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSdkReady, setIsSdkReady] = useState(false);
 
-  const sdkConfig = {
-    paymentMethodsOrder: 'CARD',
-    preSelectedPaymentMethod: 'CARD',
-    title: 'Secure Checkout',
-    subtitle: 'Pay with Super and save your card',
-  };
+  const sdkConfig = (() => {
+    const saved = localStorage.getItem('sdk_config');
+    const base = saved ? JSON.parse(saved) : {};
+    return {
+      paymentMethodsOrder: 'CARD',
+      preSelectedPaymentMethod: 'CARD',
+      title: 'Secure Checkout',
+      subtitle: 'Pay with Super and save your card',
+      amount: base.amount || 15000,
+    };
+  })();
 
   const [billingDetails, setBillingDetails] = useState({
     firstName: 'John',
@@ -84,7 +89,7 @@ const InitialPayOffSession = () => {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                amount: 15000,
+                amount: sdkConfig.amount,
                 email: bd.email,
                 phone: bd.phoneNumber,
                 externalReference: `ORDER_${Date.now()}`,
@@ -332,7 +337,7 @@ const InitialPayOffSession = () => {
             <>
               <super-checkout
                 key={sessionToken}
-                amount="15000"
+                amount={String(sdkConfig.amount)}
                 checkout-session-token={sessionToken}
                 title={sdkConfig.title}
                 subtitle={sdkConfig.subtitle}
@@ -351,7 +356,7 @@ const InitialPayOffSession = () => {
                     cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
                   }}
                 >
-                  {loading ? 'Processing...' : 'Place Order — £150.00'}
+                  {loading ? 'Processing...' : `Place Order — £${(sdkConfig.amount / 100).toFixed(2)}`}
                 </button>
               )}
               {errorMessage && (

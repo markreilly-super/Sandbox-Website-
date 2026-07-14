@@ -370,7 +370,7 @@ const CheckoutPage = () => {
                   width: '100%', marginTop: '25px', padding: '18px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? 'Processing Order...' : 'Place Order — £150.00'}
+                {loading ? 'Processing Order...' : `Place Order — £${(sdkConfig.amount / 100).toFixed(2)}`}
               </button>
             )}
             
