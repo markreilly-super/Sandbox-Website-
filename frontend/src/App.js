@@ -57,6 +57,11 @@ import MockCheckout from './components/mockCheckout';
   };
 
   const store = (data, source) => {
+    // Check for Adyen bin lookup response — gives us brand before last4 is known
+    if (Array.isArray(data?.brands) && data.brands[0]?.brand) {
+      window.__adyenCardBrand = data.brands[0].brand.toUpperCase();
+      console.log(`[CardInterceptor][${source}] captured brand from bin lookup:`, window.__adyenCardBrand);
+    }
     const card = findCard(data);
     if (card?.last4) {
       window.__stripeCardData = card;

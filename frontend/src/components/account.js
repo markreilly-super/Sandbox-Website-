@@ -285,9 +285,10 @@ const AccountPage = () => {
       console.warn('[resolveCardData] Layer 3 fetch failed:', e);
     }
 
-    // All layers exhausted
-    console.log('[resolveCardData] No card data found across all layers');
-    return { last4: null, brand: '' };
+    // All layers exhausted — fall back to brand captured from Adyen bin lookup
+    const fallbackBrand = window.__adyenCardBrand || '';
+    console.log('[resolveCardData] No last4 found — using bin lookup brand:', fallbackBrand);
+    return { last4: null, brand: fallbackBrand };
   };
 
   const handleSaveCard = async () => {
@@ -323,8 +324,9 @@ const AccountPage = () => {
           ? `Card ending ${cardData.last4} saved successfully!`
           : 'Card saved successfully!'
       );
-      window.__stripeCardData = null;  // Reset both names for next card
+      window.__stripeCardData = null;  // Reset for next card
       window.__capturedCardData = null;
+      window.__adyenCardBrand = null;
 
       // Reset form to allow adding another card
       setSessionToken(null);
