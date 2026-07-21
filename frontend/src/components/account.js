@@ -64,6 +64,10 @@ const AccountPage = () => {
     return localStorage.getItem('_debug_') === 'true';
   });
 
+  // Keep-alive: ping /ping every 13 min, max 3 times per activation
+  const [keepAliveCount, setKeepAliveCount] = useState(0); // 0 = idle, 1-3 = active
+  const keepAliveRef = useRef(null);
+
   const handleToggleDebug = () => {
     if (debugEnabled) {
       localStorage.removeItem('_debug_');
@@ -71,6 +75,38 @@ const AccountPage = () => {
       localStorage.setItem('_debug_', true);
     }
     window.location.reload();
+  };
+
+  const handleKeepAlive = () => {
+    // If already running, stop and reset
+    if (keepAliveRef.current) {
+      clearInterval(keepAliveRef.current);
+      keepAliveRef.current = null;
+      setKeepAliveCount(0);
+      return;
+    }
+
+    let count = 0;
+
+    const ping = async () => {
+      count += 1;
+      setKeepAliveCount(count);
+      try {
+        await fetch(`${API_BASE}/ping`);
+        console.log(`[KeepAlive] Ping ${count}/3 sent`);
+      } catch (e) {
+        console.warn('[KeepAlive] Ping failed:', e);
+      }
+      if (count >= 3) {
+        clearInterval(keepAliveRef.current);
+        keepAliveRef.current = null;
+        setKeepAliveCount(0);
+      }
+    };
+
+    // Fire immediately, then every 13 minutes
+    ping();
+    keepAliveRef.current = setInterval(ping, 13 * 60 * 1000);
   };
 
   // Customer ID persisted in localStorage per environment
@@ -424,6 +460,25 @@ const AccountPage = () => {
             }}
           >
             {debugEnabled ? '🟠 Logs On' : '⚪ Logs Off'}
+          </button>
+        </div>
+
+        {/* Keep-alive ping */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+          <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: '600', color: '#555' }}>Keep Server Awake</p>
+          <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#999' }}>Pings server every 13 min (3×)</p>
+          <button
+            onClick={handleKeepAlive}
+            style={{
+              width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid',
+              borderColor: keepAliveCount > 0 ? '#1976d2' : '#ddd',
+              backgroundColor: keepAliveCount > 0 ? '#e3f2fd' : '#fff',
+              fontWeight: 'bold', cursor: 'pointer',
+              color: keepAliveCount > 0 ? '#1565c0' : '#555',
+              fontSize: '12px',
+            }}
+          >
+            {keepAliveCount > 0 ? `🔵 Active (${keepAliveCount}/3)` : '⚪ Start'}
           </button>
         </div>
       </div>

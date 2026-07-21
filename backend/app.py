@@ -66,6 +66,10 @@ stripe.api_key = STRIPE_SECRET_KEY
 def get_config():
     return CREDENTIALS[current_env]
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({'status': 'ok'})
+
 # ── Request logging ───────────────────────────────────────────────────────────
 log_history = deque(maxlen=100)
 log_lock = threading.Lock()
