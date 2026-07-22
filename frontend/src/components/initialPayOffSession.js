@@ -187,7 +187,7 @@ const InitialPayOffSession = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: 15000,
+          amount: sdkConfig.amount,
           email: billingDetails.email,
           phone: billingDetails.phoneNumber,
           externalReference: `ORDER_${Date.now()}`,
