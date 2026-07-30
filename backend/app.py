@@ -1,4 +1,8 @@
 import os
+import hmac
+import hashlib
+import base64
+import time
 import requests
 import uuid
 import json
@@ -65,6 +69,51 @@ stripe.api_key = STRIPE_SECRET_KEY
 
 def get_config():
     return CREDENTIALS[current_env]
+
+# ── Webhook signature verification ────────────────────────────────────────────
+# Set SUPER_WEBHOOK_SECRET in backend/.env or your hosting env vars
+WEBHOOK_SECRET = os.environ.get('SUPER_WEBHOOK_SECRET', '')
+
+def verify_super_signature(raw_body, header, secret):
+    """
+    Verifies the super-signature header using HMAC-SHA256.
+    Header format: "t:<timestamp_ms>,v1:<base64_signature>"
+    Returns (True, None) on success, (False, reason_string) on failure.
+    """
+    if not secret:
+        # No secret configured — skip verification (sandbox mode)
+        print('[Webhook] WARNING: SUPER_WEBHOOK_SECRET not set, skipping signature verification')
+        return True, None
+
+    if not header:
+        return False, 'Missing super-signature header'
+
+    try:
+        parts = dict(p.split(':', 1) for p in header.split(','))
+        timestamp = parts.get('t')
+        signature = parts.get('v1')
+    except Exception:
+        return False, 'Malformed super-signature header'
+
+    if not timestamp or not signature:
+        return False, 'Missing t or v1 in super-signature header'
+
+    # Replay attack protection — reject if older than 5 minutes
+    age_ms = abs(time.time() * 1000 - int(timestamp))
+    if age_ms > 5 * 60 * 1000:
+        return False, f'Timestamp too old ({int(age_ms / 1000)}s)'
+
+    # Build signed message: timestamp + raw body (no separator)
+    message = timestamp.encode() + raw_body
+    expected = base64.b64encode(
+        hmac.new(secret.encode(), message, hashlib.sha256).digest()
+    ).decode()
+
+    # Constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(expected, signature):
+        return False, 'Signature mismatch'
+
+    return True, None
 
 @app.route('/ping', methods=['GET'])
 def ping():
@@ -147,7 +196,14 @@ def apple_pay_domain_association():
 # Webhook endpoint to receive payment status updates from Super Payments
 @app.route('/payment', methods=['POST'])
 def webhooks():
-    payload = request.get_json()
+    raw_body = request.get_data()
+    sig_header = request.headers.get('super-signature', '')
+    valid, reason = verify_super_signature(raw_body, sig_header, WEBHOOK_SECRET)
+    if not valid:
+        print(f'[Webhook] Rejected /payment — {reason}')
+        return jsonify({'error': reason}), 401
+
+    payload = json.loads(raw_body)
     print('[Webhook received]', json.dumps(payload, indent=2))
     _add_webhook({
         'id': str(uuid.uuid4()),
@@ -155,6 +211,7 @@ def webhooks():
         'type': 'payment',
         'endpoint': '/payment',
         'payload': payload,
+        'signature_verified': True,
     })
     return 'ok', 200
 
@@ -236,7 +293,14 @@ def logs_stream():
 
 @app.route('/refund', methods=['POST'])
 def refundWebhooks():
-    payload = request.get_json()
+    raw_body = request.get_data()
+    sig_header = request.headers.get('super-signature', '')
+    valid, reason = verify_super_signature(raw_body, sig_header, WEBHOOK_SECRET)
+    if not valid:
+        print(f'[Webhook] Rejected /refund — {reason}')
+        return jsonify({'error': reason}), 401
+
+    payload = json.loads(raw_body)
     print('[Refund Webhook received]', json.dumps(payload, indent=2))
     _add_webhook({
         'id': str(uuid.uuid4()),
@@ -244,6 +308,7 @@ def refundWebhooks():
         'type': 'refund',
         'endpoint': '/refund',
         'payload': payload,
+        'signature_verified': True,
     })
     return 'ok', 200
 
