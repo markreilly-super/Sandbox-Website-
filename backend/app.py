@@ -545,17 +545,17 @@ def get_payment_method(pm_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/customers/<customer_id>/payment-methods', methods=['GET'])
-def get_customer_payment_methods(customer_id):
-    """Fetch all saved payment methods for a customer."""
+@app.route('/customers/<customer_id>', methods=['GET'])
+def get_customer(customer_id):
+    """Fetch a customer record by ID."""
     cfg = get_config()
     headers = {'Authorization': cfg['api_key'], 'accept': 'application/json'}
     try:
-        url = f"{cfg['base_url']}/customers/{customer_id}/payment-methods"
-        print(f"[Environment] GET Customer Payment Methods: {current_env}")
+        url = f"{cfg['base_url']}/customers/{customer_id}"
+        print(f"[Environment] GET Customer: {current_env}")
         response = api_request('GET', url, headers)
         data = response.json()
-        print(f"GET Customer Payment Methods Response: {data}")
+        print(f"GET Customer Response: {data}")
         return jsonify(data), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500

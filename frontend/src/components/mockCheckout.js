@@ -399,26 +399,41 @@ const MockCheckout = () => {
       const proceedData = await response.json();
 
       if (experience === 'upsell') {
-        // Don't redirect — fetch the saved payment method and show the upsell
-        try {
-          const pmRes = await fetch(`${API_BASE}/customers/${customerId}/payment-methods`);
-          const pmData = await pmRes.json();
-          console.log('[Upsell] Customer payment methods:', pmData);
-          // Dig out the first payment method from whatever shape the API returns
-          const pmList = pmData.data ?? pmData.paymentMethods ?? (Array.isArray(pmData) ? pmData : []);
-          const pm = pmList[0];
-          if (pm?.id) {
-            setUpsellPaymentMethodId(pm.id);
-            const rawBrand = pm.card?.brand || pm.brand || window.__adyenCardBrand || '';
-            const rawLast4 = pm.card?.last4 || pm.last4 || window.__stripeCardData?.last4 || null;
-            setSavedCard({ last4: rawLast4, brand: rawBrand.toUpperCase() });
-          } else {
-            // No PM found yet — still show upsell, off-session will use what we have
-            setSavedCard({ last4: window.__stripeCardData?.last4 || null, brand: window.__adyenCardBrand || 'CARD' });
+        // Don't redirect — poll webhooks for customer.payment_method.enabled event
+        // to get the paymentMethodId of the card saved during checkout.
+        console.log('[Upsell] Polling webhooks for customer.payment_method.enabled...');
+        let pmId = null;
+        const pollStart = Date.now();
+        while (Date.now() - pollStart < 15000) {
+          try {
+            const whRes = await fetch(`${API_BASE}/webhooks`);
+            const webhooks = await whRes.json();
+            const event = webhooks.find(w =>
+              w.payload?.eventType === 'customer.payment_method.enabled' &&
+              w.payload?.data?.customerId === customerId
+            );
+            if (event) {
+              pmId = event.payload.data.paymentMethodId;
+              console.log('[Upsell] Found paymentMethodId from webhook:', pmId);
+              break;
+            }
+          } catch (e) {
+            console.warn('[Upsell] Webhook poll error:', e);
           }
-        } catch (e) {
-          console.warn('[Upsell] Could not fetch payment methods:', e);
+          await new Promise(r => setTimeout(r, 1500));
         }
+
+        if (!pmId) {
+          setError('Could not retrieve saved payment method — webhook not received within 15s. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        setUpsellPaymentMethodId(pmId);
+        setSavedCard({
+          last4: window.__stripeCardData?.last4 || null,
+          brand: (window.__adyenCardBrand || window.__stripeCardData?.brand || 'CARD').toUpperCase(),
+        });
         setStep('upsell');
       } else if (proceedData.redirectUrl) {
         window.location.href = proceedData.redirectUrl;
