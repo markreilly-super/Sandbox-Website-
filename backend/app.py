@@ -71,7 +71,9 @@ def get_config():
     return CREDENTIALS[current_env]
 
 # ── Webhook signature verification ────────────────────────────────────────────
-# Set SUPER_WEBHOOK_SECRET in backend/.env or your hosting env vars
+# The webhook secret is the Signing Key found in the Super Portal:
+# Portal → Webhooks → click on the webhook → under "Signing Keys"
+# Set it as SUPER_WEBHOOK_SECRET in backend/.env or your hosting env vars.
 WEBHOOK_SECRET = os.environ.get('SUPER_WEBHOOK_SECRET', '')
 
 def verify_super_signature(raw_body, header, secret):
@@ -542,6 +544,22 @@ def get_payment_method(pm_id):
         return jsonify(data), response.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/customers/<customer_id>/payment-methods', methods=['GET'])
+def get_customer_payment_methods(customer_id):
+    """Fetch all saved payment methods for a customer."""
+    cfg = get_config()
+    headers = {'Authorization': cfg['api_key'], 'accept': 'application/json'}
+    try:
+        url = f"{cfg['base_url']}/customers/{customer_id}/payment-methods"
+        print(f"[Environment] GET Customer Payment Methods: {current_env}")
+        response = api_request('GET', url, headers)
+        data = response.json()
+        print(f"GET Customer Payment Methods Response: {data}")
+        return jsonify(data), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/create-off-session-payment', methods=['POST'])
 def off_session_payment():

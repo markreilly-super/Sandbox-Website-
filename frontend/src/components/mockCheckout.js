@@ -14,6 +14,14 @@ const PRODUCT = {
   emoji: '🎧',
 };
 
+const UPSELL_PRODUCT = {
+  name: 'Super Carry Case',
+  description: 'Premium travel case with custom-fit foam protection designed for your new headphones.',
+  price: 1999,
+  priceDisplay: '£19.99',
+  emoji: '🎒',
+};
+
 const EXPERIENCES = [
   {
     id: 'normal',
@@ -38,6 +46,14 @@ const EXPERIENCES = [
     emoji: '➕',
     badgeColor: '#9c27b0',
     badgeLabel: 'Add Card',
+  },
+  {
+    id: 'upsell',
+    title: 'Pay, Save & Upsell',
+    description: 'Pay and save your card, then get offered a one-click upsell charged instantly to the saved card.',
+    emoji: '🛍️',
+    badgeColor: '#ff6f00',
+    badgeLabel: 'Upsell',
   },
 ];
 
@@ -118,7 +134,7 @@ const OrderSummary = () => (
 
 const MockCheckout = () => {
   // ── Core navigation state ──────────────────────────────────────────────────
-  const [step, setStep] = useState('select'); // select | product | basket | billing | checkout | card-setup | card-saved
+  const [step, setStep] = useState('select'); // select | product | basket | billing | checkout | card-setup | card-saved | upsell | upsell-complete
   const [experience, setExperience] = useState(null);
 
   // ── Customer / payment state ───────────────────────────────────────────────
@@ -128,6 +144,7 @@ const MockCheckout = () => {
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
   const [savedCard, setSavedCard] = useState(null); // { last4, brand }
   const [addCardPass, setAddCardPass] = useState(1); // 1 = add card, 2 = pay with saved card
+  const [upsellPaymentMethodId, setUpsellPaymentMethodId] = useState(null);
 
   // ── SDK readiness ──────────────────────────────────────────────────────────
   const [isSdkReady, setIsSdkReady] = useState(false);
@@ -233,6 +250,8 @@ const MockCheckout = () => {
       checkout: 'billing',
       'card-setup': 'billing',
       'card-saved': 'billing',
+      upsell: null, // order already placed — no going back
+      'upsell-complete': null,
     };
     setError('');
     setStep(backMap[step] || 'select');
@@ -248,6 +267,7 @@ const MockCheckout = () => {
     setCheckoutSessionId(null);
     setSavedCard(null);
     setAddCardPass(1);
+    setUpsellPaymentMethodId(null);
     setIsSdkReady(false);
     setIsCardSdkReady(false);
     setError('');
@@ -275,8 +295,8 @@ const MockCheckout = () => {
         setSessionToken(data.checkoutSessionToken);
         setCheckoutSessionId(data.checkoutSessionId);
         setStep('checkout');
-      } else if (experience === 'save-card') {
-        // Create customer then checkout session
+      } else if (experience === 'save-card' || experience === 'upsell') {
+        // Create customer then checkout session (card will be saved after payment)
         const custRes = await fetch(`${API_BASE}/customers`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -377,7 +397,30 @@ const MockCheckout = () => {
         body: JSON.stringify(body),
       });
       const proceedData = await response.json();
-      if (proceedData.redirectUrl) {
+
+      if (experience === 'upsell') {
+        // Don't redirect — fetch the saved payment method and show the upsell
+        try {
+          const pmRes = await fetch(`${API_BASE}/customers/${customerId}/payment-methods`);
+          const pmData = await pmRes.json();
+          console.log('[Upsell] Customer payment methods:', pmData);
+          // Dig out the first payment method from whatever shape the API returns
+          const pmList = pmData.data ?? pmData.paymentMethods ?? (Array.isArray(pmData) ? pmData : []);
+          const pm = pmList[0];
+          if (pm?.id) {
+            setUpsellPaymentMethodId(pm.id);
+            const rawBrand = pm.card?.brand || pm.brand || window.__adyenCardBrand || '';
+            const rawLast4 = pm.card?.last4 || pm.last4 || window.__stripeCardData?.last4 || null;
+            setSavedCard({ last4: rawLast4, brand: rawBrand.toUpperCase() });
+          } else {
+            // No PM found yet — still show upsell, off-session will use what we have
+            setSavedCard({ last4: window.__stripeCardData?.last4 || null, brand: window.__adyenCardBrand || 'CARD' });
+          }
+        } catch (e) {
+          console.warn('[Upsell] Could not fetch payment methods:', e);
+        }
+        setStep('upsell');
+      } else if (proceedData.redirectUrl) {
         window.location.href = proceedData.redirectUrl;
       }
     } catch (err) {
@@ -458,6 +501,31 @@ const MockCheckout = () => {
       } else {
         window.location.href = '/success';
       }
+    } catch (err) {
+      setError('Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── handleUpsellPurchase: one-click buy with saved card ───────────────────
+  const handleUpsellPurchase = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE}/create-off-session-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          paymentMethodId: upsellPaymentMethodId,
+          amount: UPSELL_PRODUCT.price,
+          externalReference: `MOCK_UPSELL_${Date.now()}`,
+        }),
+      });
+      const data = await response.json();
+      console.log('[Upsell] Off-session payment result:', data);
+      setStep('upsell-complete');
     } catch (err) {
       setError('Payment failed. Please try again.');
     } finally {
@@ -780,6 +848,162 @@ const MockCheckout = () => {
             }}
           >
             Continue Shopping →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // UPSELL
+  if (step === 'upsell') {
+    return (
+      <div className="layout-page">
+        <ExperienceBadge experience={experience} onChangeExperience={() => setStep('select')} />
+
+        {/* Post-purchase confirmation banner */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '14px',
+          padding: '18px 24px', marginBottom: '36px',
+          backgroundColor: '#e8f5e9', border: '1px solid #4CAF50', borderRadius: '12px',
+        }}>
+          <span style={{ fontSize: '28px' }}>✅</span>
+          <div>
+            <div style={{ fontWeight: '700', fontSize: '15px', color: '#2e7d32' }}>Order confirmed!</div>
+            <div style={{ fontSize: '13px', color: '#388e3c', marginTop: '2px' }}>
+              Your {PRODUCT.name} is on its way. Your card has been saved for future purchases.
+            </div>
+          </div>
+        </div>
+
+        {/* Upsell offer */}
+        <div style={{ maxWidth: '680px' }}>
+          <div style={{
+            padding: '6px 16px', backgroundColor: '#ff6f00', color: '#fff',
+            borderRadius: '20px', fontSize: '12px', fontWeight: '700',
+            display: 'inline-block', marginBottom: '16px', letterSpacing: '0.5px',
+          }}>
+            ⚡ SPECIAL OFFER — Just for you
+          </div>
+          <h1 style={{ fontSize: '1.7rem', margin: '0 0 8px' }}>Complete the set</h1>
+          <p style={{ color: '#666', fontSize: '15px', marginBottom: '28px' }}>
+            Customers who bought the {PRODUCT.name} also love this:
+          </p>
+
+          <div style={{
+            display: 'flex', gap: '28px', padding: '28px',
+            backgroundColor: '#fff', border: '2px solid #ff6f00',
+            borderRadius: '16px', alignItems: 'center', marginBottom: '28px',
+            boxShadow: '0 4px 20px rgba(255,111,0,0.1)',
+          }}>
+            <div style={{
+              width: '100px', height: '100px', borderRadius: '12px',
+              backgroundColor: '#fff8f0', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: '52px', flexShrink: 0,
+            }}>
+              {UPSELL_PRODUCT.emoji}
+            </div>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ margin: '0 0 6px', fontSize: '1.2rem' }}>{UPSELL_PRODUCT.name}</h2>
+              <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
+                {UPSELL_PRODUCT.description}
+              </p>
+              <div style={{ fontSize: '1.5rem', fontWeight: '700' }}>{UPSELL_PRODUCT.priceDisplay}</div>
+            </div>
+          </div>
+
+          {/* Saved card confirmation */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '14px',
+            padding: '14px 18px', backgroundColor: '#f5f5f5',
+            borderRadius: '10px', marginBottom: '20px', fontSize: '13px', color: '#555',
+          }}>
+            <span style={{ fontSize: '20px' }}>💳</span>
+            <span>
+              Charged instantly to your saved card
+              {savedCard?.last4 ? ` •••• ${savedCard.last4}` : ''}
+              {savedCard?.brand ? ` (${savedCard.brand})` : ''}
+              {' '}— no checkout needed.
+            </span>
+          </div>
+
+          {error && <p style={{ color: '#e53935', fontSize: '14px', marginBottom: '12px' }}>{error}</p>}
+
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              style={{
+                flex: 1, minWidth: '200px', padding: '16px',
+                backgroundColor: '#ff6f00', color: '#fff',
+                border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '700',
+                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+              }}
+              onClick={handleUpsellPurchase}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : `Buy Now — ${UPSELL_PRODUCT.priceDisplay}`}
+            </button>
+            <button
+              style={{
+                padding: '16px 24px', backgroundColor: '#fff', color: '#666',
+                border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px',
+                fontWeight: '600', cursor: 'pointer',
+              }}
+              onClick={() => setStep('upsell-complete')}
+              disabled={loading}
+            >
+              No thanks
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // UPSELL COMPLETE
+  if (step === 'upsell-complete') {
+    const boughtUpsell = upsellPaymentMethodId !== null;
+    return (
+      <div className="layout-page">
+        <ExperienceBadge experience={experience} onChangeExperience={() => setStep('select')} />
+        <div style={{ maxWidth: '520px' }}>
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+          <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>
+            {boughtUpsell ? 'All done — great choice!' : 'Order complete!'}
+          </h1>
+          <p style={{ color: '#555', fontSize: '15px', lineHeight: '1.6', marginBottom: '28px' }}>
+            {boughtUpsell
+              ? `Your ${PRODUCT.name} and ${UPSELL_PRODUCT.name} are confirmed. The upsell was charged in one click with your saved card — no re-entering details.`
+              : `Your ${PRODUCT.name} is confirmed. Your card is saved for next time.`}
+          </p>
+
+          {/* Order recap */}
+          <div style={{
+            backgroundColor: '#f9f9f9', borderRadius: '12px',
+            border: '1px solid #e0e0e0', overflow: 'hidden', marginBottom: '28px',
+          }}>
+            <div style={{ padding: '14px 20px', fontWeight: '700', fontSize: '13px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#f0f0f0' }}>
+              Order Summary
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>
+              <span>{PRODUCT.emoji} {PRODUCT.name}</span>
+              <span style={{ fontWeight: '600' }}>{PRODUCT.priceDisplay}</span>
+            </div>
+            {boughtUpsell && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>
+                <span>{UPSELL_PRODUCT.emoji} {UPSELL_PRODUCT.name}</span>
+                <span style={{ fontWeight: '600' }}>{UPSELL_PRODUCT.priceDisplay}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 20px', fontSize: '15px', fontWeight: '700' }}>
+              <span>Total</span>
+              <span>£{((PRODUCT.price + (boughtUpsell ? UPSELL_PRODUCT.price : 0)) / 100).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <button
+            style={{ padding: '14px 28px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}
+            onClick={() => setStep('select')}
+          >
+            ← Back to experiences
           </button>
         </div>
       </div>
