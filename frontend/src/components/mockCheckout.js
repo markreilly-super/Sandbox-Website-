@@ -589,13 +589,16 @@ const MockCheckout = () => {
       // Update the component's amount attribute — this triggers an async API call
       // inside the SDK to update the payment intent server-side.
       const el = document.querySelector('super-checkout');
+      console.log(`[Tiered] Button clicked: ${tierKey} | amount before setAttribute: ${el?.getAttribute('amount')}`);
       if (el) el.setAttribute('amount', String(tierAmount));
+      console.log(`[Tiered] amount after setAttribute: ${el?.getAttribute('amount')}`);
       setCheckoutAmount(tierAmount);
       setSelectedTier(tierKey);
 
       // Wait for the SDK to finish updating the payment intent before submitting.
       await new Promise(r => setTimeout(r, 800));
 
+      console.log(`[Tiered] amount at submit() time: ${document.querySelector('super-checkout')?.getAttribute('amount')}`);
       const result = await window.superCheckout.submit({
         customerInformation: {
           firstName: billing.firstName,
@@ -858,6 +861,7 @@ const MockCheckout = () => {
                 <h2 style={{ fontSize: '1.3rem', marginBottom: '20px' }}>Secure Checkout</h2>
                 {sessionToken ? (
                   <>
+                    {isTiered && console.log(`[Tiered] Component rendered with initial amount: ${PRODUCT.price}`)}
                     <super-checkout
                       key={sessionToken}
                       amount={String(PRODUCT.price)}
