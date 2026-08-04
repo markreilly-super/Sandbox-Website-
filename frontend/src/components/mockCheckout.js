@@ -579,6 +579,54 @@ const MockCheckout = () => {
     }
   };
 
+  // ── handleTieredPlaceOrder: VIP or Standard button submit ────────────────
+  const handleTieredPlaceOrder = async (tierKey) => {
+    if (!window.superCheckout) return;
+    setLoading(true);
+    setError('');
+    const tierAmount = TIERS[tierKey].amount;
+    try {
+      // Update the component's amount attribute before submitting so the
+      // payment intent is updated to the chosen tier's amount.
+      const el = document.querySelector('super-checkout');
+      if (el) el.setAttribute('amount', String(tierAmount));
+      setCheckoutAmount(tierAmount);
+      setSelectedTier(tierKey);
+
+      const result = await window.superCheckout.submit({
+        customerInformation: {
+          firstName: billing.firstName,
+          lastName: billing.lastName,
+          email: billing.email,
+          phoneNumber: billing.phone,
+        },
+      });
+
+      if (result?.status === 'FAILURE') {
+        setError(result.errorMessage || 'Payment failed.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: tierAmount,
+          email: billing.email,
+          phone: billing.phone,
+          externalReference: `MOCK_ORDER_${Date.now()}`,
+        }),
+      });
+      const proceedData = await response.json();
+      if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
+    } catch (err) {
+      setError('Communication error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── Shared styles ──────────────────────────────────────────────────────────
   const inputStyle = {
     padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
@@ -778,102 +826,14 @@ const MockCheckout = () => {
     const isAddCardSecondPass = experience === 'add-card' && addCardPass === 2;
     const isTiered = experience === 'tiered';
 
-    // For tiered: update amount attribute directly on the mounted web component — no remount
-    const handleSelectTier = (tier) => {
-      const newAmount = TIERS[tier].amount;
-      setSelectedTier(tier);
-      setCheckoutAmount(newAmount);
-      const el = document.querySelector('super-checkout');
-      if (el) el.setAttribute('amount', String(newAmount));
-    };
-
-    const activeAmount = isTiered ? checkoutAmount : PRODUCT.price;
-    const activePriceDisplay = `£${(activeAmount / 100).toFixed(2)}`;
-
     return (
       <div className="layout-page">
         <ExperienceBadge experience={experience} onChangeExperience={() => setStep('select')} />
         <button style={backBtn} onClick={goBack}>← Back</button>
 
-        {/* Tiered: full-width tier selector above the checkout columns */}
-        {isTiered && (
-          <div style={{ marginBottom: '28px' }}>
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: '700' }}>
-              Choose your package
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '680px' }}>
-              {Object.entries(TIERS).map(([key, tier]) => {
-                const isActive = selectedTier === key;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => handleSelectTier(key)}
-                    style={{
-                      padding: '20px', borderRadius: '12px', cursor: 'pointer',
-                      border: `2px solid ${isActive ? tier.color : '#e0e0e0'}`,
-                      backgroundColor: isActive ? `${tier.color}10` : '#fff',
-                      transition: 'border-color 0.15s, background-color 0.15s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                      <div>
-                        <span style={{ fontSize: '20px', marginRight: '8px' }}>{tier.emoji}</span>
-                        <span style={{ fontWeight: '700', fontSize: '16px' }}>{tier.label}</span>
-                      </div>
-                      <span style={{
-                        fontWeight: '800', fontSize: '18px',
-                        color: isActive ? tier.color : '#333',
-                      }}>
-                        £{(tier.amount / 100).toFixed(2)}
-                      </span>
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#555', lineHeight: '1.8' }}>
-                      {tier.perks.map((p, i) => <li key={i}>{p}</li>)}
-                    </ul>
-                    {isActive && (
-                      <div style={{
-                        marginTop: '10px', padding: '4px 10px',
-                        backgroundColor: tier.color, color: '#fff',
-                        borderRadius: '20px', fontSize: '12px', fontWeight: '700',
-                        display: 'inline-block',
-                      }}>
-                        ✓ Selected
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         <div className="layout-two-col">
-          {/* Left: order summary (dynamic total for tiered) */}
-          <div style={{ backgroundColor: '#f9f9f9', padding: '24px', borderRadius: '12px', border: '1px solid #eee' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700' }}>Order Summary</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', borderBottom: '1px solid #e0e0e0', marginBottom: '16px' }}>
-              <span style={{ fontSize: '32px' }}>{PRODUCT.emoji}</span>
-              <div>
-                <div style={{ fontWeight: '600', fontSize: '14px' }}>{PRODUCT.name}</div>
-                {isTiered && selectedTier && (
-                  <div style={{ fontSize: '12px', color: TIERS[selectedTier].color, fontWeight: '600', marginTop: '2px' }}>
-                    {TIERS[selectedTier].label} Package
-                  </div>
-                )}
-                <div style={{ fontSize: '13px', color: '#666', marginTop: '2px' }}>Qty: 1</div>
-              </div>
-              <div style={{ marginLeft: 'auto', fontWeight: '700', fontSize: '15px' }}>{activePriceDisplay}</div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', marginBottom: '8px' }}>
-              <span>Subtotal</span><span>{activePriceDisplay}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#4CAF50', marginBottom: '12px' }}>
-              <span>Delivery</span><span>FREE</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '16px', paddingTop: '12px', borderTop: '2px solid #333' }}>
-              <span>Total</span><span>{activePriceDisplay}</span>
-            </div>
-          </div>
+          {/* Left: order summary */}
+          <OrderSummary />
 
           {/* Right: checkout */}
           <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #ddd' }}>
@@ -890,11 +850,6 @@ const MockCheckout = () => {
                   {loading ? 'Processing...' : `Pay ${PRODUCT.priceDisplay}`}
                 </button>
               </>
-            ) : isTiered && !selectedTier ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', flexDirection: 'column', gap: '12px', color: '#999' }}>
-                <span style={{ fontSize: '40px' }}>☝️</span>
-                <p style={{ margin: 0, fontSize: '14px', textAlign: 'center' }}>Select a package above to load the checkout</p>
-              </div>
             ) : (
               <>
                 <h2 style={{ fontSize: '1.3rem', marginBottom: '20px' }}>Secure Checkout</h2>
@@ -902,7 +857,7 @@ const MockCheckout = () => {
                   <>
                     <super-checkout
                       key={sessionToken}
-                      amount={String(activeAmount)}
+                      amount={String(PRODUCT.price)}
                       checkout-session-token={sessionToken}
                       title="Secure Checkout"
                       subtitle="Pay with Super and earn cash rewards"
@@ -910,7 +865,47 @@ const MockCheckout = () => {
                       pre-selected-payment-method="CARD"
                       {...(experience === 'save-card' ? { 'support-express-wallets': 'true' } : {})}
                     />
-                    {isSdkReady && (
+
+                    {/* Tiered: two place-order buttons, each with their own amount */}
+                    {isTiered ? isSdkReady && (
+                      <div style={{ marginTop: '20px' }}>
+                        {/* VIP button */}
+                        <button
+                          onClick={() => handleTieredPlaceOrder('vip')}
+                          disabled={loading}
+                          style={{
+                            width: '100%', padding: '18px 20px', marginBottom: '8px',
+                            backgroundColor: loading ? '#3a3ab8' : '#1a0dab',
+                            color: '#fff', border: 'none', borderRadius: '8px',
+                            fontSize: '15px', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer',
+                            letterSpacing: '0.3px', opacity: loading ? 0.8 : 1,
+                          }}
+                        >
+                          🔒 PLACE YOUR ORDER + VIP | £{(TIERS.vip.amount / 100).toFixed(2)}
+                        </button>
+                        <p style={{ fontSize: '12px', color: '#555', marginTop: '4px', marginBottom: '20px', lineHeight: '1.5' }}>
+                          Includes express delivery, priority support, extended warranty &amp; gift wrapping.
+                        </p>
+
+                        {/* Standard button */}
+                        <button
+                          onClick={() => handleTieredPlaceOrder('standard')}
+                          disabled={loading}
+                          style={{
+                            width: '100%', padding: '18px 20px', marginBottom: '8px',
+                            backgroundColor: loading ? '#a8bce8' : '#c7d9f5',
+                            color: '#111', border: 'none', borderRadius: '8px',
+                            fontSize: '15px', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer',
+                            letterSpacing: '0.3px', opacity: loading ? 0.8 : 1,
+                          }}
+                        >
+                          🔒 PLACE YOUR ORDER | £{(TIERS.standard.amount / 100).toFixed(2)}
+                        </button>
+                        <p style={{ fontSize: '12px', color: '#555', marginTop: '4px', lineHeight: '1.5' }}>
+                          You may purchase with or without VIP. If you select VIP, the total price you pay will be no more than the total price without VIP.
+                        </p>
+                      </div>
+                    ) : isSdkReady && (
                       <button
                         onClick={handlePlaceOrder}
                         disabled={loading}
@@ -919,7 +914,7 @@ const MockCheckout = () => {
                           opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {loading ? 'Processing...' : `Place Order — ${activePriceDisplay}`}
+                        {loading ? 'Processing...' : `Place Order — ${PRODUCT.priceDisplay}`}
                       </button>
                     )}
                     {error && <p style={{ color: '#e53935', fontSize: '14px', marginTop: '10px' }}>{error}</p>}
