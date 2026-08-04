@@ -586,12 +586,17 @@ const MockCheckout = () => {
     setError('');
     const tierAmount = TIERS[tierKey].amount;
     try {
-      // Update the component's amount attribute before submitting so the
-      // payment intent is updated to the chosen tier's amount.
+      // Update the component's amount attribute — this triggers an async API call
+      // inside the SDK to update the payment intent server-side.
       const el = document.querySelector('super-checkout');
       if (el) el.setAttribute('amount', String(tierAmount));
       setCheckoutAmount(tierAmount);
       setSelectedTier(tierKey);
+
+      // Wait for the SDK to finish updating the payment intent before submitting.
+      // Without this, submit fires before the new amount is committed server-side
+      // causing a "Amount does not match active payment intent" error.
+      await new Promise(r => setTimeout(r, 800));
 
       const result = await window.superCheckout.submit({
         customerInformation: {
@@ -875,13 +880,13 @@ const MockCheckout = () => {
                           disabled={loading}
                           style={{
                             width: '100%', padding: '18px 20px', marginBottom: '8px',
-                            backgroundColor: loading ? '#3a3ab8' : '#1a0dab',
+                            backgroundColor: '#1a0dab',
                             color: '#fff', border: 'none', borderRadius: '8px',
                             fontSize: '15px', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer',
-                            letterSpacing: '0.3px', opacity: loading ? 0.8 : 1,
+                            letterSpacing: '0.3px', opacity: loading ? 0.7 : 1,
                           }}
                         >
-                          🔒 PLACE YOUR ORDER + VIP | £{(TIERS.vip.amount / 100).toFixed(2)}
+                          {loading && selectedTier === 'vip' ? 'Processing...' : `🔒 PLACE YOUR ORDER + VIP | £${(TIERS.vip.amount / 100).toFixed(2)}`}
                         </button>
                         <p style={{ fontSize: '12px', color: '#555', marginTop: '4px', marginBottom: '20px', lineHeight: '1.5' }}>
                           Includes express delivery, priority support, extended warranty &amp; gift wrapping.
@@ -893,13 +898,13 @@ const MockCheckout = () => {
                           disabled={loading}
                           style={{
                             width: '100%', padding: '18px 20px', marginBottom: '8px',
-                            backgroundColor: loading ? '#a8bce8' : '#c7d9f5',
+                            backgroundColor: '#c7d9f5',
                             color: '#111', border: 'none', borderRadius: '8px',
                             fontSize: '15px', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer',
-                            letterSpacing: '0.3px', opacity: loading ? 0.8 : 1,
+                            letterSpacing: '0.3px', opacity: loading ? 0.7 : 1,
                           }}
                         >
-                          🔒 PLACE YOUR ORDER | £{(TIERS.standard.amount / 100).toFixed(2)}
+                          {loading && selectedTier === 'standard' ? 'Processing...' : `🔒 PLACE YOUR ORDER | £${(TIERS.standard.amount / 100).toFixed(2)}`}
                         </button>
                         <p style={{ fontSize: '12px', color: '#555', marginTop: '4px', lineHeight: '1.5' }}>
                           You may purchase with or without VIP. If you select VIP, the total price you pay will be no more than the total price without VIP.
