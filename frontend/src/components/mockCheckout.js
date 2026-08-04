@@ -22,6 +22,23 @@ const UPSELL_PRODUCT = {
   emoji: '🎒',
 };
 
+const TIERS = {
+  standard: {
+    label: 'Standard',
+    emoji: '🛒',
+    amount: PRODUCT.price,
+    color: '#4CAF50',
+    perks: ['Standard delivery (3–5 days)', 'Email support'],
+  },
+  vip: {
+    label: 'VIP',
+    emoji: '👑',
+    amount: PRODUCT.price + 1000,
+    color: '#7b1fa2',
+    perks: ['Express delivery (next day)', 'Priority phone support', 'Extended 3-year warranty', 'Gift wrapping included'],
+  },
+};
+
 const EXPERIENCES = [
   {
     id: 'normal',
@@ -54,6 +71,14 @@ const EXPERIENCES = [
     emoji: '🛍️',
     badgeColor: '#ff6f00',
     badgeLabel: 'Upsell',
+  },
+  {
+    id: 'tiered',
+    title: 'VIP vs Standard',
+    description: 'Customer picks a tier (VIP or Standard) after the session loads — each has a different amount, updating the checkout live.',
+    emoji: '👑',
+    badgeColor: '#7b1fa2',
+    badgeLabel: 'Tiered',
   },
 ];
 
@@ -145,6 +170,10 @@ const MockCheckout = () => {
   const [savedCard, setSavedCard] = useState(null); // { last4, brand }
   const [addCardPass, setAddCardPass] = useState(1); // 1 = add card, 2 = pay with saved card
   const [upsellPaymentMethodId, setUpsellPaymentMethodId] = useState(null);
+
+  // ── Tiered experience state ────────────────────────────────────────────────
+  const [selectedTier, setSelectedTier] = useState(null); // null | 'standard' | 'vip'
+  const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
 
   // ── SDK readiness ──────────────────────────────────────────────────────────
   const [isSdkReady, setIsSdkReady] = useState(false);
@@ -268,6 +297,8 @@ const MockCheckout = () => {
     setSavedCard(null);
     setAddCardPass(1);
     setUpsellPaymentMethodId(null);
+    setSelectedTier(null);
+    setCheckoutAmount(PRODUCT.price);
     setIsSdkReady(false);
     setIsCardSdkReady(false);
     setError('');
@@ -289,7 +320,7 @@ const MockCheckout = () => {
     setLoading(true);
     setError('');
     try {
-      if (experience === 'normal') {
+      if (experience === 'normal' || experience === 'tiered') {
         const data = await createCheckoutSession(null);
         if (!data.checkoutSessionToken) throw new Error('No session token returned');
         setSessionToken(data.checkoutSessionToken);
@@ -384,7 +415,7 @@ const MockCheckout = () => {
       }
 
       const body = {
-        amount: PRODUCT.price,
+        amount: experience === 'tiered' ? checkoutAmount : PRODUCT.price,
         email: billing.email,
         phone: billing.phone,
         externalReference: `MOCK_ORDER_${Date.now()}`,
@@ -742,17 +773,105 @@ const MockCheckout = () => {
     );
   }
 
-  // CHECKOUT (normal + save-card embedded, or add-card second pass saved card)
+  // CHECKOUT (normal + save-card + upsell embedded, tiered, or add-card second pass)
   if (step === 'checkout') {
     const isAddCardSecondPass = experience === 'add-card' && addCardPass === 2;
+    const isTiered = experience === 'tiered';
+
+    // For tiered: tier selection drives the amount; remount component when tier changes
+    const handleSelectTier = (tier) => {
+      setSelectedTier(tier);
+      setCheckoutAmount(TIERS[tier].amount);
+      setIsSdkReady(false); // component will remount
+    };
+
+    const activeAmount = isTiered ? checkoutAmount : PRODUCT.price;
+    const activePriceDisplay = `£${(activeAmount / 100).toFixed(2)}`;
 
     return (
       <div className="layout-page">
         <ExperienceBadge experience={experience} onChangeExperience={() => setStep('select')} />
         <button style={backBtn} onClick={goBack}>← Back</button>
+
+        {/* Tiered: full-width tier selector above the checkout columns */}
+        {isTiered && (
+          <div style={{ marginBottom: '28px' }}>
+            <h2 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: '700' }}>
+              Choose your package
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '680px' }}>
+              {Object.entries(TIERS).map(([key, tier]) => {
+                const isActive = selectedTier === key;
+                return (
+                  <div
+                    key={key}
+                    onClick={() => handleSelectTier(key)}
+                    style={{
+                      padding: '20px', borderRadius: '12px', cursor: 'pointer',
+                      border: `2px solid ${isActive ? tier.color : '#e0e0e0'}`,
+                      backgroundColor: isActive ? `${tier.color}10` : '#fff',
+                      transition: 'border-color 0.15s, background-color 0.15s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                      <div>
+                        <span style={{ fontSize: '20px', marginRight: '8px' }}>{tier.emoji}</span>
+                        <span style={{ fontWeight: '700', fontSize: '16px' }}>{tier.label}</span>
+                      </div>
+                      <span style={{
+                        fontWeight: '800', fontSize: '18px',
+                        color: isActive ? tier.color : '#333',
+                      }}>
+                        £{(tier.amount / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#555', lineHeight: '1.8' }}>
+                      {tier.perks.map((p, i) => <li key={i}>{p}</li>)}
+                    </ul>
+                    {isActive && (
+                      <div style={{
+                        marginTop: '10px', padding: '4px 10px',
+                        backgroundColor: tier.color, color: '#fff',
+                        borderRadius: '20px', fontSize: '12px', fontWeight: '700',
+                        display: 'inline-block',
+                      }}>
+                        ✓ Selected
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="layout-two-col">
-          {/* Left: order summary */}
-          <OrderSummary />
+          {/* Left: order summary (dynamic total for tiered) */}
+          <div style={{ backgroundColor: '#f9f9f9', padding: '24px', borderRadius: '12px', border: '1px solid #eee' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700' }}>Order Summary</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', borderBottom: '1px solid #e0e0e0', marginBottom: '16px' }}>
+              <span style={{ fontSize: '32px' }}>{PRODUCT.emoji}</span>
+              <div>
+                <div style={{ fontWeight: '600', fontSize: '14px' }}>{PRODUCT.name}</div>
+                {isTiered && selectedTier && (
+                  <div style={{ fontSize: '12px', color: TIERS[selectedTier].color, fontWeight: '600', marginTop: '2px' }}>
+                    {TIERS[selectedTier].label} Package
+                  </div>
+                )}
+                <div style={{ fontSize: '13px', color: '#666', marginTop: '2px' }}>Qty: 1</div>
+              </div>
+              <div style={{ marginLeft: 'auto', fontWeight: '700', fontSize: '15px' }}>{activePriceDisplay}</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', marginBottom: '8px' }}>
+              <span>Subtotal</span><span>{activePriceDisplay}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#4CAF50', marginBottom: '12px' }}>
+              <span>Delivery</span><span>FREE</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '16px', paddingTop: '12px', borderTop: '2px solid #333' }}>
+              <span>Total</span><span>{activePriceDisplay}</span>
+            </div>
+          </div>
 
           {/* Right: checkout */}
           <div style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #ddd' }}>
@@ -769,14 +888,19 @@ const MockCheckout = () => {
                   {loading ? 'Processing...' : `Pay ${PRODUCT.priceDisplay}`}
                 </button>
               </>
+            ) : isTiered && !selectedTier ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', flexDirection: 'column', gap: '12px', color: '#999' }}>
+                <span style={{ fontSize: '40px' }}>☝️</span>
+                <p style={{ margin: 0, fontSize: '14px', textAlign: 'center' }}>Select a package above to load the checkout</p>
+              </div>
             ) : (
               <>
                 <h2 style={{ fontSize: '1.3rem', marginBottom: '20px' }}>Secure Checkout</h2>
                 {sessionToken ? (
                   <>
                     <super-checkout
-                      key={sessionToken}
-                      amount={String(PRODUCT.price)}
+                      key={isTiered ? `${sessionToken}-${selectedTier}` : sessionToken}
+                      amount={String(activeAmount)}
                       checkout-session-token={sessionToken}
                       title="Secure Checkout"
                       subtitle="Pay with Super and earn cash rewards"
@@ -793,7 +917,7 @@ const MockCheckout = () => {
                           opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {loading ? 'Processing...' : `Place Order — ${PRODUCT.priceDisplay}`}
+                        {loading ? 'Processing...' : `Place Order — ${activePriceDisplay}`}
                       </button>
                     )}
                     {error && <p style={{ color: '#e53935', fontSize: '14px', marginTop: '10px' }}>{error}</p>}
