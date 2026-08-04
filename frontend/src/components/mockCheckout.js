@@ -218,7 +218,7 @@ const MockCheckout = () => {
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [sessionToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionToken, selectedTier]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Poll for super-card SDK readiness ──────────────────────────────────────
   useEffect(() => {
