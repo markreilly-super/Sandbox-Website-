@@ -218,7 +218,7 @@ const MockCheckout = () => {
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [sessionToken, selectedTier]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Poll for super-card SDK readiness ──────────────────────────────────────
   useEffect(() => {
@@ -778,11 +778,13 @@ const MockCheckout = () => {
     const isAddCardSecondPass = experience === 'add-card' && addCardPass === 2;
     const isTiered = experience === 'tiered';
 
-    // For tiered: tier selection drives the amount; remount component when tier changes
+    // For tiered: update amount attribute directly on the mounted web component — no remount
     const handleSelectTier = (tier) => {
+      const newAmount = TIERS[tier].amount;
       setSelectedTier(tier);
-      setCheckoutAmount(TIERS[tier].amount);
-      setIsSdkReady(false); // component will remount
+      setCheckoutAmount(newAmount);
+      const el = document.querySelector('super-checkout');
+      if (el) el.setAttribute('amount', String(newAmount));
     };
 
     const activeAmount = isTiered ? checkoutAmount : PRODUCT.price;
@@ -899,7 +901,7 @@ const MockCheckout = () => {
                 {sessionToken ? (
                   <>
                     <super-checkout
-                      key={isTiered ? `${sessionToken}-${selectedTier}` : sessionToken}
+                      key={sessionToken}
                       amount={String(activeAmount)}
                       checkout-session-token={sessionToken}
                       title="Secure Checkout"
