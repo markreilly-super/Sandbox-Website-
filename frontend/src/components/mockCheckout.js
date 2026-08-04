@@ -586,12 +586,15 @@ const MockCheckout = () => {
     setError('');
     const tierAmount = TIERS[tierKey].amount;
     try {
-      // Update the component's amount attribute before submitting so the
-      // payment intent is updated to the chosen tier's amount.
+      // Update the component's amount attribute — this triggers an async API call
+      // inside the SDK to update the payment intent server-side.
       const el = document.querySelector('super-checkout');
       if (el) el.setAttribute('amount', String(tierAmount));
       setCheckoutAmount(tierAmount);
       setSelectedTier(tierKey);
+
+      // Wait for the SDK to finish updating the payment intent before submitting.
+      await new Promise(r => setTimeout(r, 800));
 
       const result = await window.superCheckout.submit({
         customerInformation: {
