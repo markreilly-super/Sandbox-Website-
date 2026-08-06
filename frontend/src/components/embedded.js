@@ -270,7 +270,7 @@ const CheckoutPage = () => {
         },
       });
 
-      console.log("Result Status" + result.status)
+      console.log("Result Status " + result.status)
 
       if (result.status === 'FAILURE') {
         setErrorMessage(result.errorMessage || 'Payment Failed');
@@ -359,7 +359,6 @@ const CheckoutPage = () => {
               subtitle={sdkConfig.subtitle}
               payment-methods-order={sdkConfig.paymentMethodsOrder}
               pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
-              support-express-wallets="true"
             />
 
             {isSdkReady && (
