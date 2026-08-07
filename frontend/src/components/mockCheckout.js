@@ -843,6 +843,7 @@ const MockCheckout = () => {
                 id="super-single-checkout-express"
                 amount={String(PRODUCT.price)}
                 checkout-session-token={expressSessionToken}
+                payment-to-display="EXPRESS_WALLETS"
                 display-auth="EXPRESS_WALLETS"
               />
             ) : (
