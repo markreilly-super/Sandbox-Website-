@@ -240,7 +240,7 @@ const MockCheckout = () => {
 
   // ── Create dedicated session for express wallet buttons (standard basket) ───
   useEffect(() => {
-    if (experience !== 'standard' || step !== 'basket') return;
+    if (experience !== 'normal' || step !== 'basket') return;
     setExpressSessionToken(null);
     setExpressSessionId(null);
     expressHandlerRegistered.current = false;
@@ -831,7 +831,7 @@ const MockCheckout = () => {
         </div>
 
         {/* Express wallet buttons — Standard flow only */}
-        {experience === 'standard' && (
+        {experience === 'normal' && (
           <div style={{ marginTop: '32px', maxWidth: '400px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e0e0e0' }} />
