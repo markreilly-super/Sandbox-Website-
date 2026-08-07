@@ -171,6 +171,10 @@ const MockCheckout = () => {
   const [addCardPass, setAddCardPass] = useState(1); // 1 = add card, 2 = pay with saved card
   const [upsellPaymentMethodId, setUpsellPaymentMethodId] = useState(null);
 
+  // ── Express wallet state (basket page, standard flow) ─────────────────────
+  const [expressSessionToken, setExpressSessionToken] = useState(null);
+  const [expressSessionId, setExpressSessionId] = useState(null);
+
   // ── Tiered experience state ────────────────────────────────────────────────
   const [selectedTier, setSelectedTier] = useState(null); // null | 'standard' | 'vip'
   const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
@@ -193,6 +197,7 @@ const MockCheckout = () => {
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const walletsListenerAdded = useRef(false);
+  const expressHandlerRegistered = useRef(false);
   const billingDetailsRef = useRef(billing);
   useEffect(() => { billingDetailsRef.current = billing; }, [billing]);
 
@@ -232,6 +237,65 @@ const MockCheckout = () => {
     }, 500);
     return () => clearInterval(interval);
   }, [sessionToken, step]);
+
+  // ── Create dedicated session for express wallet buttons (standard basket) ───
+  useEffect(() => {
+    if (experience !== 'standard' || step !== 'basket') return;
+    setExpressSessionToken(null);
+    setExpressSessionId(null);
+    expressHandlerRegistered.current = false;
+
+    const create = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/checkout-sessions`, { method: 'POST' });
+        const data = await res.json();
+        if (data.checkoutSessionToken) {
+          setExpressSessionToken(data.checkoutSessionToken);
+          setExpressSessionId(data.checkoutSessionId);
+          console.log('✅ Express session created:', data.checkoutSessionId);
+        }
+      } catch (e) { console.error('Express session creation failed', e); }
+    };
+    create();
+  }, [experience, step]);
+
+  // ── Register wallet payment handler on <super-single-checkout> ──────────────
+  useEffect(() => {
+    if (!expressSessionToken || !expressSessionId) return;
+    expressHandlerRegistered.current = false;
+
+    const interval = setInterval(() => {
+      const el = document.getElementById('super-single-checkout-express');
+      if (el && typeof el.registerWalletPaymentHandler === 'function' && !expressHandlerRegistered.current) {
+        expressHandlerRegistered.current = true;
+        clearInterval(interval);
+
+        el.registerWalletPaymentHandler(async (event) => {
+          const detail = event.detail || {};
+          console.log('💳 Express wallet payment triggered:', detail.type, detail);
+          try {
+            const res = await fetch(`${API_BASE}/checkout-sessions/${expressSessionId}/proceed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                amount: PRODUCT.price,
+                email: detail.email || billingDetailsRef.current.email,
+                phone: billingDetailsRef.current.phone,
+                externalReference: `ORDER_${Date.now()}`,
+              }),
+            });
+            const data = await res.json();
+            if (data.redirectUrl) window.location.href = data.redirectUrl;
+          } catch (err) {
+            console.error('Express wallet handler error:', err);
+          }
+        });
+        console.log('✅ Express wallet handler registered');
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [expressSessionToken, expressSessionId]);
 
   // ── Register wallets handler (save-card experience) ────────────────────────
   useEffect(() => {
@@ -765,6 +829,29 @@ const MockCheckout = () => {
             Proceed to Checkout →
           </button>
         </div>
+
+        {/* Express wallet buttons — Standard flow only */}
+        {experience === 'standard' && (
+          <div style={{ marginTop: '32px', maxWidth: '400px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e0e0e0' }} />
+              <span style={{ fontSize: '12px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or express checkout</span>
+              <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e0e0e0' }} />
+            </div>
+            {expressSessionToken ? (
+              <super-single-checkout
+                id="super-single-checkout-express"
+                amount={String(PRODUCT.price)}
+                checkout-session-token={expressSessionToken}
+                payment-to-display="EXPRESS_WALLETS"
+              />
+            ) : (
+              <div style={{ textAlign: 'center', fontSize: '13px', color: '#bbb', padding: '12px 0' }}>
+                Loading express checkout…
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
