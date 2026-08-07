@@ -590,23 +590,18 @@ const AccountPage = () => {
             {loading ? 'Initializing...' : '+ Add Saved Card'}
           </button>
         ) : (
-          <div style={{ borderRadius: '16px', border: '1px solid #e0e0e0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#333' }}>Add a new card</p>
-              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#999' }}>Your card details are encrypted and stored securely.</p>
-            </div>
-            <div style={{ padding: '20px' }}>
-              <super-card session-token={sessionToken} test-use-otp="true"></super-card>
-              {isSdkReady && (
-                <button
-                  onClick={handleSaveCard}
-                  disabled={submitting}
-                  style={{ ...btnStyle, marginTop: '12px', backgroundColor: '#000', color: '#fff' }}
-                >
-                  {submitting ? 'Saving...' : 'Save Card'}
-                </button>
-              )}
-            </div>
+          <div>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#999' }}>Your card details are encrypted and stored securely.</p>
+            <super-card session-token={sessionToken} test-use-otp="true"></super-card>
+            {isSdkReady && (
+              <button
+                onClick={handleSaveCard}
+                disabled={submitting}
+                style={{ ...btnStyle, marginTop: '12px', backgroundColor: '#000', color: '#fff' }}
+              >
+                {submitting ? 'Saving...' : 'Save Card'}
+              </button>
+            )}
           </div>
         )}
       </div>
