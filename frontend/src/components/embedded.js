@@ -52,7 +52,6 @@ const CheckoutPage = () => {
   // Holds the active MutationObserver so we can disconnect it on cleanup
   const bnplObserverRef = useRef(null);
   const walletsListenerAdded = useRef(false);
-  const expressHandlerRegistered = useRef(false);
 
   const triggerCustomPhoneNumberEvent = useCallback((phoneNumber) => {
     const superCheckoutElement = document.querySelector('super-checkout');
@@ -132,46 +131,6 @@ const CheckoutPage = () => {
           }
         });
         console.log('✅ Wallets handler registered');
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [checkoutSessionId]);
-
-  // Register wallet payment handler for the <super-single-checkout> express buttons.
-  // Unlike <super-checkout>, this uses element.registerWalletPaymentHandler directly
-  // on the element reference (no window.superCheckout global for this component).
-  useEffect(() => {
-    if (!checkoutSessionId) return;
-    expressHandlerRegistered.current = false;
-
-    const interval = setInterval(() => {
-      const el = document.getElementById('super-single-checkout-express');
-      if (el && typeof el.registerWalletPaymentHandler === 'function' && !expressHandlerRegistered.current) {
-        expressHandlerRegistered.current = true;
-        clearInterval(interval);
-
-        el.registerWalletPaymentHandler(async (event) => {
-          const detail = event.detail || {};
-          console.log('💳 Express wallet payment triggered:', detail.type, detail);
-          try {
-            const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                amount: sdkConfig.amount,
-                email: detail.email || billingDetailsRef.current.email,
-                phone: billingDetailsRef.current.phoneNumber,
-                externalReference: `ORDER_${Date.now()}`,
-              }),
-            });
-            const proceedData = await response.json();
-            if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
-          } catch (err) {
-            console.error('Express wallet handler error:', err);
-          }
-        });
-        console.log('✅ Express wallet handler registered (super-single-checkout)');
       }
     }, 500);
 
@@ -392,24 +351,6 @@ const CheckoutPage = () => {
         <h2 style={{ fontSize: '1.4rem', marginBottom: '25px' }}>Embedded Checkout</h2>
         {sessionToken ? (
           <>
-            {/* Express wallet buttons — Apple Pay / Google Pay */}
-            <div style={{ marginBottom: '8px' }}>
-              <p style={{ textAlign: 'center', fontSize: '12px', color: '#999', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Express checkout
-              </p>
-              <super-single-checkout
-                id="super-single-checkout-express"
-                amount={String(sdkConfig.amount)}
-                checkout-session-token={sessionToken}
-                payment-to-display="EXPRESS_WALLETS"
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '18px 0 12px' }}>
-                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e0e0e0' }} />
-                <span style={{ fontSize: '12px', color: '#aaa' }}>or pay with card</span>
-                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e0e0e0' }} />
-              </div>
-            </div>
-
             <super-checkout
               key={refreshKey}
               amount={String(sdkConfig.amount)}
