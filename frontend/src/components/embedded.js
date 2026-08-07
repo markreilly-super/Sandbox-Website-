@@ -11,8 +11,6 @@ const GLOBAL_EVENTS = {
 const CheckoutPage = () => {
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
-  const [expressSessionToken, setExpressSessionToken] = useState(null);
-  const [expressSessionId, setExpressSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
@@ -143,9 +141,8 @@ const CheckoutPage = () => {
   // Register wallet payment handler for the <super-single-checkout> express buttons.
   // Unlike <super-checkout>, this uses element.registerWalletPaymentHandler directly
   // on the element reference (no window.superCheckout global for this component).
-  // Uses its own dedicated session (expressSessionId / expressSessionToken).
   useEffect(() => {
-    if (!expressSessionToken) return;
+    if (!checkoutSessionId) return;
     expressHandlerRegistered.current = false;
 
     const interval = setInterval(() => {
@@ -158,7 +155,7 @@ const CheckoutPage = () => {
           const detail = event.detail || {};
           console.log('💳 Express wallet payment triggered:', detail.type, detail);
           try {
-            const response = await fetch(`${API_BASE}/checkout-sessions/${expressSessionId}/proceed`, {
+            const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -179,7 +176,7 @@ const CheckoutPage = () => {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [expressSessionToken, expressSessionId]);
+  }, [checkoutSessionId]);
 
   /**
    * BNPL PHONE INJECTION
@@ -351,22 +348,13 @@ const CheckoutPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // Create both sessions in parallel — card form and express wallets each need their own
-        const [cardRes, expressRes] = await Promise.all([
-          fetch(`${API_BASE}/checkout-sessions`, { method: 'POST' }),
-          fetch(`${API_BASE}/checkout-sessions`, { method: 'POST' }),
-        ]);
-        const [cardData, expressData] = await Promise.all([cardRes.json(), expressRes.json()]);
-
-        if (cardData.checkoutSessionToken) {
-          setSessionToken(cardData.checkoutSessionToken);
-          setCheckoutSessionId(cardData.checkoutSessionId);
+        const res = await fetch(`${API_BASE}/checkout-sessions`, { method: 'POST' });
+        const data = await res.json();
+        if (data.checkoutSessionToken) {
+          setSessionToken(data.checkoutSessionToken);
+          setCheckoutSessionId(data.checkoutSessionId);
         }
-        if (expressData.checkoutSessionToken) {
-          setExpressSessionToken(expressData.checkoutSessionToken);
-          setExpressSessionId(expressData.checkoutSessionId);
-        }
-      } catch (e) { console.error("Session creation failed", e); }
+      } catch (e) { console.error("Session failed"); }
     };
     init();
   }, []);
@@ -412,7 +400,7 @@ const CheckoutPage = () => {
               <super-single-checkout
                 id="super-single-checkout-express"
                 amount={String(sdkConfig.amount)}
-                checkout-session-token={expressSessionToken}
+                checkout-session-token={sessionToken}
                 payment-to-display="EXPRESS_WALLETS"
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '18px 0 12px' }}>
