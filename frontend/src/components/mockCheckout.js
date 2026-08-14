@@ -761,11 +761,15 @@ const MockCheckout = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await window.superCheckout.triggerUpsell({
-        amount: String(PRODUCT.price),
-        checkoutSession: sessionToken,
+      const result = await window.superCheckout.submit({
+        customerInformation: {
+          firstName: billing.firstName,
+          lastName: billing.lastName,
+          email: billing.email,
+          phoneNumber: billing.phone,
+        },
       });
-      console.log('[Wowcher] triggerUpsell result:', result);
+      console.log('[Wowcher] submit result:', result);
 
       if (result?.status === 'FAILURE') {
         setError(result.errorMessage || 'Payment failed. Please try again.');
