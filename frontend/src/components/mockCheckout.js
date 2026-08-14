@@ -755,28 +755,12 @@ const MockCheckout = () => {
     }
   };
 
-  // ── handleWowcherPlaceOrder: triggerUpsell then proceed ─────────────────────
+  // ── handleWowcherPlaceOrder: session is locked to paymentMethodId server-side,
+  // so we call /proceed directly — no SDK submit() needed
   const handleWowcherPlaceOrder = async () => {
-    if (!window.superCheckout) return;
     setLoading(true);
     setError('');
     try {
-      const result = await window.superCheckout.submit({
-        customerInformation: {
-          firstName: billing.firstName,
-          lastName: billing.lastName,
-          email: billing.email,
-          phoneNumber: billing.phone,
-        },
-      });
-      console.log('[Wowcher] submit result:', result);
-
-      if (result?.status === 'FAILURE') {
-        setError(result.errorMessage || 'Payment failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-
       const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -788,9 +772,11 @@ const MockCheckout = () => {
         }),
       });
       const proceedData = await response.json();
+      console.log('[Wowcher] proceed response:', proceedData);
       if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
+      else setError(proceedData.detail || 'No redirect URL returned.');
     } catch (err) {
-      console.error('[Wowcher] triggerUpsell error:', err);
+      console.error('[Wowcher] proceed error:', err);
       setError(err?.message || 'Communication error. Please try again.');
     } finally {
       setLoading(false);
@@ -1388,31 +1374,18 @@ const MockCheckout = () => {
             </div>
           )}
 
-          {/* Mount component invisibly — needed for window.superCheckout global */}
-          {sessionToken && (
-            <div style={{ display: 'none' }}>
-              <super-checkout
-                key={sessionToken}
-                amount={String(PRODUCT.price)}
-                checkout-session-token={sessionToken}
-              />
-            </div>
-          )}
-
-          {isSdkReady && (
-            <button
-              onClick={handleWowcherPlaceOrder}
-              disabled={loading}
-              style={{
-                ...primaryBtn, marginTop: '20px',
-                backgroundColor: '#e91e8c',
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading ? 'Processing...' : `⚡ Pay ${PRODUCT.priceDisplay} with ••••${last4 || '????'}`}
-            </button>
-          )}
+          <button
+            onClick={handleWowcherPlaceOrder}
+            disabled={loading}
+            style={{
+              ...primaryBtn, marginTop: '20px',
+              backgroundColor: '#e91e8c',
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Processing...' : `⚡ Pay ${PRODUCT.priceDisplay} with ••••${last4 || '????'}`}
+          </button>
 
           {error && <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>}
         </div>
