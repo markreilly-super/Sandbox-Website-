@@ -364,15 +364,23 @@ def create_checkout():
 
     frontend_data = request.get_json(silent=True) or {}
     customer_id = frontend_data.get("customerId")
+    payment_method_id = frontend_data.get("paymentMethodId")
 
     if customer_id:
-        payload["customer"] = {
-            "id": customer_id,
-            "savePaymentMethod": True,
-            "paymentMethodMetadata": {
-                "Card": "4242"
+        if payment_method_id:
+            # Wowcher upsell: lock session to a specific saved card, no new card entry
+            payload["customer"] = {
+                "id": customer_id,
+                "paymentMethodId": payment_method_id,
             }
-        }
+        else:
+            payload["customer"] = {
+                "id": customer_id,
+                "savePaymentMethod": True,
+                "paymentMethodMetadata": {
+                    "Card": "4242"
+                }
+            }
 
     try:
         print(f"--- Step 1: Requesting session from {cfg['base_url']} ---")
