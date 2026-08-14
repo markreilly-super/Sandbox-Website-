@@ -765,6 +765,7 @@ const MockCheckout = () => {
         amount: String(PRODUCT.price),
         checkoutSession: sessionToken,
       });
+      console.log('[Wowcher] triggerUpsell result:', result);
 
       if (result?.status === 'FAILURE') {
         setError(result.errorMessage || 'Payment failed. Please try again.');
@@ -785,7 +786,8 @@ const MockCheckout = () => {
       const proceedData = await response.json();
       if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
     } catch (err) {
-      setError('Communication error. Please try again.');
+      console.error('[Wowcher] triggerUpsell error:', err);
+      setError(err?.message || 'Communication error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -1382,13 +1384,15 @@ const MockCheckout = () => {
             </div>
           )}
 
-          {/* Super checkout component — locked to saved card */}
+          {/* Mount component invisibly — needed for window.superCheckout global */}
           {sessionToken && (
-            <super-checkout
-              key={sessionToken}
-              amount={String(PRODUCT.price)}
-              checkout-session-token={sessionToken}
-            />
+            <div style={{ display: 'none' }}>
+              <super-checkout
+                key={sessionToken}
+                amount={String(PRODUCT.price)}
+                checkout-session-token={sessionToken}
+              />
+            </div>
           )}
 
           {isSdkReady && (
