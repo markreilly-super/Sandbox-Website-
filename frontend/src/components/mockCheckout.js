@@ -963,12 +963,11 @@ const MockCheckout = () => {
             </div>
             {expressSessionToken ? (
               <super-single-checkout
+                ref={el => { if (el) { el.displayAuth = 'EXPRESS_WALLETS'; el.supportCreditPopup = true; } }}
                 id="super-single-checkout-express"
                 amount={String(PRODUCT.price)}
                 checkout-session-token={expressSessionToken}
                 currency="GBP"
-                display-auth="EXPRESS_WALLETS"
-                support-credit-popup="true"
               />
             ) : (
               <div style={{ textAlign: 'center', fontSize: '13px', color: '#bbb', padding: '12px 0' }}>
@@ -1401,13 +1400,12 @@ const MockCheckout = () => {
           )}
 
           <super-single-checkout
+            ref={el => { if (el) { el.displayAuth = 'CARD'; el.supportCreditPopup = true; } }}
             id="wowcher-single-checkout"
             key={sessionToken}
             amount={String(PRODUCT.price)}
             checkout-session-token={sessionToken}
             currency="GBP"
-            payment-to-display="CARD"
-            support-credit-popup="true"
           />
 
           {isWowcherSdkReady && (
