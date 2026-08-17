@@ -419,8 +419,6 @@ def proceed_checkout(session_id):
         "failureUrl": f"{FRONTEND_URL}/failure",
         "successUrl": f"{FRONTEND_URL}/success",
         "externalReference": frontend_data.get("externalReference", "TEST_ORDER_001_VIA_LOCALHOST"),
-        "email": frontend_data.get("email", "customer@example.com"),
-        "phone": frontend_data.get("phone", "07700900000"),
         "paymentInitiatorId": cfg['initiator_id'],
         "currency": "GBP",
         "metadata": {
@@ -430,12 +428,16 @@ def proceed_checkout(session_id):
         "shippingAddress": {
     "addressLine1": "123 Test Street",
     "city": "London",
-    "country": "GB"
+    "country": "GB",
+    "email": frontend_data.get("email", "customer@example.com"),
+            "phone": frontend_data.get("phone", "07700900000")
   },
   "billingAddress": {
    "addressLine1": "123 Test Street",
     "city": "London",
-    "country": "GB"
+    "country": "GB",
+    "email": frontend_data.get("email", "customer@example.com"),
+            "phone": frontend_data.get("phone", "07700900000")
   },
   "lineItems": [
     {
