@@ -185,6 +185,7 @@ const MockCheckout = () => {
 
   // ── Wowcher upsell state ───────────────────────────────────────────────────
   const [wowcherPaymentMethod, setWowcherPaymentMethod] = useState(null); // { id, last4, brand }
+  const [isWowcherSdkReady, setIsWowcherSdkReady] = useState(false);
 
   // ── Tiered experience state ────────────────────────────────────────────────
   const [selectedTier, setSelectedTier] = useState(null); // null | 'standard' | 'vip'
@@ -248,6 +249,20 @@ const MockCheckout = () => {
     }, 500);
     return () => clearInterval(interval);
   }, [sessionToken, step]);
+
+  // ── Poll for super-single-checkout readiness (wowcher-checkout step) ────────
+  useEffect(() => {
+    if (step !== 'wowcher-checkout' || !sessionToken) return;
+    setIsWowcherSdkReady(false);
+    const interval = setInterval(() => {
+      const el = document.querySelector('super-single-checkout#wowcher-single-checkout');
+      if (el && typeof el.submit === 'function') {
+        setIsWowcherSdkReady(true);
+        clearInterval(interval);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [step, sessionToken]);
 
   // ── Create dedicated session for express wallet buttons (standard basket) ───
   useEffect(() => {
@@ -755,12 +770,21 @@ const MockCheckout = () => {
     }
   };
 
-  // ── handleWowcherPlaceOrder: session is locked to paymentMethodId server-side,
-  // so we call /proceed directly — no SDK submit() needed
+  // ── handleWowcherPlaceOrder: submit via super-single-checkout element, then /proceed
   const handleWowcherPlaceOrder = async () => {
     setLoading(true);
     setError('');
     try {
+      const el = document.getElementById('wowcher-single-checkout');
+      const result = await el.submit();
+      console.log('[Wowcher] submit result:', result);
+
+      if (result?.status === 'FAILURE') {
+        setError(result.errorMessage || 'Payment failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -776,7 +800,7 @@ const MockCheckout = () => {
       if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
       else setError(proceedData.detail || 'No redirect URL returned.');
     } catch (err) {
-      console.error('[Wowcher] proceed error:', err);
+      console.error('[Wowcher] error:', err);
       setError(err?.message || 'Communication error. Please try again.');
     } finally {
       setLoading(false);
@@ -1374,18 +1398,28 @@ const MockCheckout = () => {
             </div>
           )}
 
-          <button
-            onClick={handleWowcherPlaceOrder}
-            disabled={loading}
-            style={{
-              ...primaryBtn, marginTop: '20px',
-              backgroundColor: '#e91e8c',
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {loading ? 'Processing...' : `⚡ Pay ${PRODUCT.priceDisplay} with ••••${last4 || '????'}`}
-          </button>
+          <super-single-checkout
+            id="wowcher-single-checkout"
+            key={sessionToken}
+            amount={String(PRODUCT.price)}
+            checkout-session-token={sessionToken}
+            payment-to-display="CARD"
+          />
+
+          {isWowcherSdkReady && (
+            <button
+              onClick={handleWowcherPlaceOrder}
+              disabled={loading}
+              style={{
+                ...primaryBtn, marginTop: '20px',
+                backgroundColor: '#e91e8c',
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Processing...' : `⚡ Pay ${PRODUCT.priceDisplay} with ••••${last4 || '????'}`}
+            </button>
+          )}
 
           {error && <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>}
         </div>
