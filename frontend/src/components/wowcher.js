@@ -65,12 +65,12 @@ const WowcherCheckout = () => {
 
   const billingRef = useRef({ email: '', phone: '' });
 
-  // ── Poll for super-checkout readiness (upsell flow) ───────────────────────
+  // ── Poll for triggerUpsell availability (upsell flow) ────────────────────
   useEffect(() => {
     if (step !== 'upsell-checkout' || !sessionToken) return;
     setIsSdkReady(false);
     const interval = setInterval(() => {
-      if (window.superCheckout?.submit) {
+      if (typeof window.superCheckout?.triggerUpsell === 'function') {
         setIsSdkReady(true);
         clearInterval(interval);
       }
@@ -151,21 +151,19 @@ const WowcherCheckout = () => {
     }
   };
 
-  // ── handleUpsellPlaceOrder: super-checkout submit then /proceed ───────────
+  // ── handleUpsellPlaceOrder: triggerUpsell (no card form) then /proceed ─────
   const handleUpsellPlaceOrder = async () => {
-    if (!window.superCheckout) return;
+    if (!window.superCheckout?.triggerUpsell) return;
     setLoading(true);
     setError('');
     try {
-      const result = await window.superCheckout.submit({
-        customerInformation: {
-          email: billingRef.current.email || 'customer@example.com',
-          phoneNumber: billingRef.current.phone || '07700900000',
-        },
+      const result = await window.superCheckout.triggerUpsell({
+        amount: String(PRODUCT.price),
+        checkoutSession: sessionToken,
       });
-      console.log('[Upsell] submit result:', result);
+      console.log('[Upsell] triggerUpsell result:', result);
       if (result?.status === 'FAILURE') {
-        setError(result.errorMessage || 'Payment failed. Please try again.');
+        setError(result.errorMessage || 'Something went wrong. No money has been taken from your account. Please try again.');
         setLoading(false);
         return;
       }
@@ -384,19 +382,26 @@ const WowcherCheckout = () => {
         </div>
 
         <div style={{ maxWidth: '560px' }}>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Upsell Checkout</h1>
+          <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Confirm Order</h1>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '28px' }}>
-            Session locked to saved card — customer completes checkout using their stored payment method.
+            Your saved card will be charged instantly — no card entry required.
           </p>
 
-          {sessionToken ? (
-            <super-checkout
-              key={sessionToken}
-              amount={String(PRODUCT.price)}
-              checkout-session-token={sessionToken}
-            />
-          ) : (
-            <p style={{ color: '#aaa' }}>Initializing checkout…</p>
+          <div style={{ backgroundColor: '#f9f9f9', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden', marginBottom: '28px' }}>
+            <div style={{ padding: '14px 20px', fontWeight: '700', fontSize: '13px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#f0f0f0' }}>
+              Order Summary
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>
+              <span>{PRODUCT.emoji} {PRODUCT.name}</span>
+              <span style={{ fontWeight: '600' }}>{PRODUCT.priceDisplay}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 20px', fontSize: '15px', fontWeight: '700' }}>
+              <span>Total</span><span>{PRODUCT.priceDisplay}</span>
+            </div>
+          </div>
+
+          {!isSdkReady && (
+            <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '16px' }}>Initializing SDK…</p>
           )}
 
           {isSdkReady && (
@@ -404,7 +409,7 @@ const WowcherCheckout = () => {
               onClick={handleUpsellPlaceOrder}
               disabled={loading}
               style={{
-                ...primaryBtn, marginTop: '20px', backgroundColor: '#e91e8c',
+                ...primaryBtn, backgroundColor: '#e91e8c',
                 opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
