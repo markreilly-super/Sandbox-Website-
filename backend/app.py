@@ -368,13 +368,9 @@ def create_checkout():
 
     if customer_id:
         if wowcher_flow:
-            import uuid
             payload["customer"] = {
                 "id": customer_id,
-                "savePaymentMethod": {
-                    "externalReference": f"wowcher-{uuid.uuid4()}",
-                    "metadata": {}
-                }
+                "savePaymentMethod": True
             }
         else:
             payload["customer"] = {
