@@ -392,6 +392,7 @@ def create_checkout():
 
     try:
         print(f"--- Step 1: Requesting session from {cfg['base_url']} ---")
+        print(f"[checkout-sessions] Payload being sent: {payload}")
         response = api_request('POST', f"{cfg['base_url']}/checkout-sessions", headers, payload)
         response_data = response.json()
         print("Super Payments Response:", response_data)

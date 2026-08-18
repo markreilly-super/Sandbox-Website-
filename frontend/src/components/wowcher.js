@@ -387,21 +387,18 @@ const WowcherCheckout = () => {
             Your saved card will be charged instantly — no card entry required.
           </p>
 
-          <div style={{ backgroundColor: '#f9f9f9', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden', marginBottom: '28px' }}>
-            <div style={{ padding: '14px 20px', fontWeight: '700', fontSize: '13px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#f0f0f0' }}>
-              Order Summary
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>
-              <span>{PRODUCT.emoji} {PRODUCT.name}</span>
-              <span style={{ fontWeight: '600' }}>{PRODUCT.priceDisplay}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 20px', fontSize: '15px', fontWeight: '700' }}>
-              <span>Total</span><span>{PRODUCT.priceDisplay}</span>
-            </div>
-          </div>
+          {sessionToken ? (
+            <super-checkout
+              key={sessionToken}
+              amount={String(PRODUCT.price)}
+              checkout-session-token={sessionToken}
+            />
+          ) : (
+            <p style={{ color: '#aaa', fontSize: '13px' }}>Initializing checkout…</p>
+          )}
 
-          {!isSdkReady && (
-            <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '16px' }}>Initializing SDK…</p>
+          {!isSdkReady && sessionToken && (
+            <p style={{ color: '#aaa', fontSize: '13px', marginTop: '12px' }}>Waiting for SDK…</p>
           )}
 
           {isSdkReady && (
