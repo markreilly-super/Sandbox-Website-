@@ -10,8 +10,18 @@ const PRODUCT = {
   emoji: '🎧',
 };
 
+const DISPLAY_OPTIONS = [
+  { value: 'CARD',            label: 'Card & BNPL',          emoji: '💳', description: 'Shows card entry and Buy Now Pay Later options.' },
+  { value: 'BNPL',            label: 'BNPL Only',            emoji: '🔄', description: 'Shows Buy Now Pay Later only.' },
+  { value: 'EXPRESS_WALLETS', label: 'Apple & Google Pay',   emoji: '📱', description: 'Shows Apple Pay and Google Pay express buttons.' },
+  { value: 'APPLE_PAY',       label: 'Apple Pay',            emoji: '🍎', description: 'Shows Apple Pay only.' },
+  { value: 'GOOGLE_PAY',      label: 'Google Pay',           emoji: '🔵', description: 'Shows Google Pay only.' },
+  { value: 'OPEN_BANKING',    label: 'Open Banking',         emoji: '🏦', description: 'Shows Open Banking payment option.' },
+];
+
 const WowcherCheckout = () => {
-  const [step, setStep] = useState('basket'); // basket | wowcher-checkout
+  const [step, setStep] = useState('select'); // select | basket | wowcher-checkout
+  const [paymentToDisplay, setPaymentToDisplay] = useState(null);
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
   const [wowcherPaymentMethod, setWowcherPaymentMethod] = useState(null); // { id, last4, brand }
@@ -129,8 +139,8 @@ const WowcherCheckout = () => {
     fontWeight: '600', cursor: 'pointer',
   };
 
-  // ── BASKET ────────────────────────────────────────────────────────────────
-  if (step === 'basket') {
+  // ── SELECT PAYMENT DISPLAY ────────────────────────────────────────────────
+  if (step === 'select') {
     return (
       <div className="layout-page">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
@@ -141,6 +151,60 @@ const WowcherCheckout = () => {
           }}>
             ⚡ Wowcher
           </span>
+        </div>
+        <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Wowcher Upsell</h1>
+        <p style={{ color: '#666', marginBottom: '32px', fontSize: '15px' }}>
+          Choose which payment method to display in the one-click checkout.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', maxWidth: '800px' }}>
+          {DISPLAY_OPTIONS.map(opt => (
+            <div
+              key={opt.value}
+              onClick={() => { setPaymentToDisplay(opt.value); setStep('basket'); }}
+              style={{
+                padding: '24px', borderRadius: '14px', border: '2px solid #e0e0e0',
+                cursor: 'pointer', backgroundColor: '#fff', transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#e91e8c'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>{opt.emoji}</div>
+              <div style={{ fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>{opt.label}</div>
+              <div style={{ fontSize: '13px', color: '#888', lineHeight: '1.4' }}>{opt.description}</div>
+              <div style={{ marginTop: '12px', display: 'inline-block', padding: '3px 10px', borderRadius: '20px', backgroundColor: '#f5f5f5', fontSize: '11px', fontFamily: 'monospace', color: '#555' }}>
+                {opt.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── BASKET ────────────────────────────────────────────────────────────────
+  if (step === 'basket') {
+    const selectedOpt = DISPLAY_OPTIONS.find(o => o.value === paymentToDisplay);
+    return (
+      <div className="layout-page">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+            backgroundColor: '#e91e8c', color: '#fff',
+          }}>
+            ⚡ Wowcher
+          </span>
+          {selectedOpt && (
+            <span style={{ fontSize: '13px', color: '#555', fontFamily: 'monospace', backgroundColor: '#f5f5f5', padding: '4px 10px', borderRadius: '20px' }}>
+              {selectedOpt.emoji} {selectedOpt.value}
+            </span>
+          )}
+          <button
+            onClick={() => setStep('select')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#666', textDecoration: 'underline', padding: 0 }}
+          >
+            ← Change
+          </button>
         </div>
 
         <h1 style={{ fontSize: '1.8rem', marginBottom: '24px' }}>Your Basket</h1>
@@ -167,7 +231,7 @@ const WowcherCheckout = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button style={secondaryBtn} onClick={() => window.history.back()}>← Continue Shopping</button>
+          <button style={secondaryBtn} onClick={() => setStep('select')}>← Back</button>
           <button
             style={{ ...primaryBtn, width: 'auto', padding: '12px 32px', backgroundColor: '#e91e8c' }}
             onClick={handleWowcherProceed}
@@ -230,7 +294,7 @@ const WowcherCheckout = () => {
           )}
 
           <super-single-checkout
-            ref={el => { if (el) { el.displayAuth = 'CARD'; el.paymentToDisplay = 'CARD'; el.supportCreditPopup = true; } }}
+            ref={el => { if (el) { el.displayAuth = paymentToDisplay; el.paymentToDisplay = paymentToDisplay; el.supportCreditPopup = true; } }}
             id="wowcher-single-checkout"
             key={sessionToken}
             amount={String(PRODUCT.price)}
