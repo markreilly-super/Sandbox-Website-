@@ -425,19 +425,19 @@ def proceed_checkout(session_id):
             "lastName": "Reilly"
         },
         "shippingAddress": {
-    "addressLine1": "123 Test Street",
-    "city": "London",
-    "country": "GB",
-    "email": frontend_data.get("email", "customer@example.com"),
-            "phone": frontend_data.get("phone", "07700900000")
-  },
-  "billingAddress": {
-   "addressLine1": "123 Test Street",
-    "city": "London",
-    "country": "GB",
-    "email": frontend_data.get("email", "customer@example.com"),
-            "phone": frontend_data.get("phone", "07700900000")
-  },
+            "addressLine1": "123 Test Street",
+            "city": "London",
+            "country": "GB",
+            "email": frontend_data.get("email") or "customer@example.com",
+            "phone": frontend_data.get("phone") or "07700900000"
+        },
+        "billingAddress": {
+            "addressLine1": "123 Test Street",
+            "city": "London",
+            "country": "GB",
+            "email": frontend_data.get("email") or "customer@example.com",
+            "phone": frontend_data.get("phone") or "07700900000"
+        },
   "lineItems": [
     {
       "type": "AIRLINE",
