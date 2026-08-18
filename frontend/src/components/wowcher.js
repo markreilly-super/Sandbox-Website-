@@ -230,7 +230,7 @@ const WowcherCheckout = () => {
           )}
 
           <super-single-checkout
-            ref={el => { if (el) { el.displayAuth = 'CARD'; el.supportCreditPopup = true; } }}
+            ref={el => { if (el) { el.displayAuth = 'CARD'; el.paymentToDisplay = 'CARD'; el.supportCreditPopup = true; } }}
             id="wowcher-single-checkout"
             key={sessionToken}
             amount={String(PRODUCT.price)}
