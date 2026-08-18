@@ -364,14 +364,17 @@ def create_checkout():
 
     frontend_data = request.get_json(silent=True) or {}
     customer_id = frontend_data.get("customerId")
-    payment_method_id = frontend_data.get("paymentMethodId")
+    wowcher_flow = frontend_data.get("wowcherFlow", False)
 
     if customer_id:
-        if payment_method_id:
-            # Wowcher upsell: lock session to a specific saved card, no new card entry
+        if wowcher_flow:
+            import uuid
             payload["customer"] = {
                 "id": customer_id,
-                "paymentMethodId": payment_method_id,
+                "savePaymentMethod": {
+                    "externalReference": f"wowcher-{uuid.uuid4()}",
+                    "metadata": {}
+                }
             }
         else:
             payload["customer"] = {

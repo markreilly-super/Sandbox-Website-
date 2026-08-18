@@ -76,7 +76,7 @@ const WowcherCheckout = () => {
       const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: storedCustomerId, paymentMethodId: enabledCard.id }),
+        body: JSON.stringify({ customerId: storedCustomerId, wowcherFlow: true }),
       });
       const sessData = await sessRes.json();
       if (!sessData.checkoutSessionToken) throw new Error(sessData.detail || 'Failed to create checkout session');
