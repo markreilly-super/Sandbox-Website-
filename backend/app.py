@@ -364,13 +364,22 @@ def create_checkout():
 
     frontend_data = request.get_json(silent=True) or {}
     customer_id = frontend_data.get("customerId")
+    payment_method_id = frontend_data.get("paymentMethodId")
     wowcher_flow = frontend_data.get("wowcherFlow", False)
+    upsell_flow = frontend_data.get("upsellFlow", False)
 
     if customer_id:
-        if wowcher_flow:
+        if upsell_flow and payment_method_id:
+            # Upsell: session locked to a specific saved card
             payload["customer"] = {
                 "id": customer_id,
-                "savePaymentMethod": True
+                "paymentMethodId": payment_method_id,
+            }
+        elif wowcher_flow:
+            # Save Card + Take Payment: save whatever card the customer uses
+            payload["customer"] = {
+                "id": customer_id,
+                "savePaymentMethod": True,
             }
         else:
             payload["customer"] = {
