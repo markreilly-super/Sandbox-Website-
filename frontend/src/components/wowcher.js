@@ -65,12 +65,12 @@ const WowcherCheckout = () => {
 
   const billingRef = useRef({ email: '', phone: '' });
 
-  // ── Poll for triggerUpsell availability (upsell flow) ────────────────────
+  // ── Poll for super-checkout SDK readiness (upsell flow) ──────────────────
   useEffect(() => {
     if (step !== 'upsell-checkout' || !sessionToken) return;
     setIsSdkReady(false);
     const interval = setInterval(() => {
-      if (typeof window.superCheckout?.triggerUpsell === 'function') {
+      if (typeof window.superCheckout?.submit === 'function') {
         setIsSdkReady(true);
         clearInterval(interval);
       }
@@ -151,17 +151,14 @@ const WowcherCheckout = () => {
     }
   };
 
-  // ── handleUpsellPlaceOrder: triggerUpsell (no card form) then /proceed ─────
+  // ── handleUpsellPlaceOrder: submit locked session then /proceed ──────────
   const handleUpsellPlaceOrder = async () => {
-    if (!window.superCheckout?.triggerUpsell) return;
+    if (!window.superCheckout?.submit) return;
     setLoading(true);
     setError('');
     try {
-      const result = await window.superCheckout.triggerUpsell({
-        amount: String(PRODUCT.price),
-        checkoutSession: sessionToken,
-      });
-      console.log('[Upsell] triggerUpsell result:', result);
+      const result = await window.superCheckout.submit();
+      console.log('[Upsell] submit result:', result);
       if (result?.status === 'FAILURE') {
         setError(result.errorMessage || 'Something went wrong. No money has been taken from your account. Please try again.');
         setLoading(false);
@@ -387,18 +384,32 @@ const WowcherCheckout = () => {
             Your saved card will be charged instantly — no card entry required.
           </p>
 
-          {sessionToken ? (
-            <super-checkout
-              key={sessionToken}
-              amount={String(PRODUCT.price)}
-              checkout-session-token={sessionToken}
-            />
-          ) : (
-            <p style={{ color: '#aaa', fontSize: '13px' }}>Initializing checkout…</p>
-          )}
+          {/* Hidden — initialises window.superCheckout without showing the card form */}
+          <div style={{ display: 'none' }}>
+            {sessionToken && (
+              <super-checkout
+                key={sessionToken}
+                amount={String(PRODUCT.price)}
+                checkout-session-token={sessionToken}
+              />
+            )}
+          </div>
 
-          {!isSdkReady && sessionToken && (
-            <p style={{ color: '#aaa', fontSize: '13px', marginTop: '12px' }}>Waiting for SDK…</p>
+          <div style={{ backgroundColor: '#f9f9f9', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden', marginBottom: '28px' }}>
+            <div style={{ padding: '14px 20px', fontWeight: '700', fontSize: '13px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#f0f0f0' }}>
+              Order Summary
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>
+              <span>{PRODUCT.emoji} {PRODUCT.name}</span>
+              <span style={{ fontWeight: '600' }}>{PRODUCT.priceDisplay}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 20px', fontSize: '15px', fontWeight: '700' }}>
+              <span>Total</span><span>{PRODUCT.priceDisplay}</span>
+            </div>
+          </div>
+
+          {!isSdkReady && (
+            <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '12px' }}>Initializing…</p>
           )}
 
           {isSdkReady && (
