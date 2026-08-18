@@ -374,6 +374,7 @@ def create_checkout():
             payload["customer"] = {
                 "id": customer_id,
                 "paymentMethodId": payment_method_id,
+                "savePaymentMethod": False,
             }
         elif wowcher_flow:
             # Save Card + Take Payment: save whatever card the customer uses
