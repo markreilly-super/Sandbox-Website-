@@ -80,14 +80,6 @@ const EXPERIENCES = [
     badgeColor: '#7b1fa2',
     badgeLabel: 'Tiered',
   },
-  {
-    id: 'wowcher-upsell',
-    title: 'Wowcher Upsell',
-    description: 'One-click payment using a previously saved card — session locked to the saved card, no card entry required.',
-    emoji: '⚡',
-    badgeColor: '#e91e8c',
-    badgeLabel: 'Wowcher',
-  },
 ];
 
 // ── Shared sub-components ────────────────────────────────────────────────────
@@ -167,7 +159,7 @@ const OrderSummary = () => (
 
 const MockCheckout = () => {
   // ── Core navigation state ──────────────────────────────────────────────────
-  const [step, setStep] = useState('select'); // select | product | basket | billing | checkout | card-setup | card-saved | upsell | upsell-complete | wowcher-checkout
+  const [step, setStep] = useState('select'); // select | product | basket | billing | checkout | card-setup | card-saved | upsell | upsell-complete
   const [experience, setExperience] = useState(null);
 
   // ── Customer / payment state ───────────────────────────────────────────────
@@ -182,10 +174,6 @@ const MockCheckout = () => {
   // ── Express wallet state (basket page, standard flow) ─────────────────────
   const [expressSessionToken, setExpressSessionToken] = useState(null);
   const [expressSessionId, setExpressSessionId] = useState(null);
-
-  // ── Wowcher upsell state ───────────────────────────────────────────────────
-  const [wowcherPaymentMethod, setWowcherPaymentMethod] = useState(null); // { id, last4, brand }
-  const [isWowcherSdkReady, setIsWowcherSdkReady] = useState(false);
 
   // ── Tiered experience state ────────────────────────────────────────────────
   const [selectedTier, setSelectedTier] = useState(null); // null | 'standard' | 'vip'
@@ -249,20 +237,6 @@ const MockCheckout = () => {
     }, 500);
     return () => clearInterval(interval);
   }, [sessionToken, step]);
-
-  // ── Poll for super-single-checkout readiness (wowcher-checkout step) ────────
-  useEffect(() => {
-    if (step !== 'wowcher-checkout' || !sessionToken) return;
-    setIsWowcherSdkReady(false);
-    const interval = setInterval(() => {
-      const el = document.querySelector('super-single-checkout#wowcher-single-checkout');
-      if (el && typeof el.submit === 'function') {
-        setIsWowcherSdkReady(true);
-        clearInterval(interval);
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [step, sessionToken]);
 
   // ── Create dedicated session for express wallet buttons (standard basket) ───
   useEffect(() => {
@@ -371,7 +345,6 @@ const MockCheckout = () => {
       'card-saved': 'billing',
       upsell: null,
       'upsell-complete': null,
-      'wowcher-checkout': 'basket',
     };
     setError('');
     setStep(backMap[step] || 'select');
@@ -390,7 +363,6 @@ const MockCheckout = () => {
     setUpsellPaymentMethodId(null);
     setSelectedTier(null);
     setCheckoutAmount(PRODUCT.price);
-    setWowcherPaymentMethod(null);
     setIsSdkReady(false);
     setIsCardSdkReady(false);
     setError('');
@@ -725,88 +697,6 @@ const MockCheckout = () => {
     }
   };
 
-  // ── handleWowcherProceed: fetch saved card + create locked session ──────────
-  const handleWowcherProceed = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const env = localStorage.getItem('super_environment') || 'test';
-      const storedCustomerId = localStorage.getItem(`super_customer_id_${env}`);
-      if (!storedCustomerId) throw new Error('No saved customer found. Please add a card on the Account Settings page first.');
-
-      // Step 1: Fetch customer to retrieve payment methods
-      const custRes = await fetch(`${API_BASE}/customers/${storedCustomerId}`);
-      const custData = await custRes.json();
-
-      // Step 2: Pick first ENABLED CARD payment method
-      const enabledCard = (custData.paymentMethods || []).find(
-        pm => pm.type === 'CARD' && pm.status === 'ENABLED'
-      );
-      if (!enabledCard) throw new Error('No enabled saved card found. Please add a card on the Account Settings page first.');
-
-      setCustomerId(storedCustomerId);
-      setWowcherPaymentMethod({
-        id: enabledCard.id,
-        last4: enabledCard.card?.last4,
-        brand: (enabledCard.card?.brand || 'CARD').toUpperCase(),
-      });
-
-      // Step 3: Create checkout session locked to this payment method
-      const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: storedCustomerId, paymentMethodId: enabledCard.id }),
-      });
-      const sessData = await sessRes.json();
-      if (!sessData.checkoutSessionToken) throw new Error(sessData.detail || 'Failed to create checkout session');
-
-      setSessionToken(sessData.checkoutSessionToken);
-      setCheckoutSessionId(sessData.checkoutSessionId);
-      setStep('wowcher-checkout');
-    } catch (err) {
-      setError(err.message || 'Failed to initialize checkout. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── handleWowcherPlaceOrder: submit via super-single-checkout element, then /proceed
-  const handleWowcherPlaceOrder = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const el = document.getElementById('wowcher-single-checkout');
-      const result = await el.submit();
-      console.log('[Wowcher] submit result:', result);
-
-      if (result?.status === 'FAILURE') {
-        setError(result.errorMessage || 'Payment failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: PRODUCT.price,
-          email: billing.email,
-          phone: billing.phone,
-          externalReference: `MOCK_ORDER_${Date.now()}`,
-        }),
-      });
-      const proceedData = await response.json();
-      console.log('[Wowcher] proceed response:', proceedData);
-      if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
-      else setError(proceedData.detail || 'No redirect URL returned.');
-    } catch (err) {
-      console.error('[Wowcher] error:', err);
-      setError(err?.message || 'Communication error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // ── Shared styles ──────────────────────────────────────────────────────────
   const inputStyle = {
     padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
@@ -935,24 +825,10 @@ const MockCheckout = () => {
         </div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <button style={secondaryBtn} onClick={() => setStep('product')}>← Continue Shopping</button>
-          {experience === 'wowcher-upsell' ? (
-            <button
-              style={{ ...primaryBtn, width: 'auto', padding: '12px 32px', backgroundColor: '#e91e8c' }}
-              onClick={handleWowcherProceed}
-              disabled={loading}
-            >
-              {loading ? 'Loading saved card...' : '⚡ Pay with Saved Card →'}
-            </button>
-          ) : (
-            <button style={{ ...primaryBtn, width: 'auto', padding: '12px 32px' }} onClick={() => setStep('billing')}>
-              Proceed to Checkout →
-            </button>
-          )}
+          <button style={{ ...primaryBtn, width: 'auto', padding: '12px 32px' }} onClick={() => setStep('billing')}>
+            Proceed to Checkout →
+          </button>
         </div>
-        {error && experience === 'wowcher-upsell' && (
-          <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>
-        )}
-
         {/* Express wallet buttons — Standard flow only */}
         {experience === 'normal' && (
           <div style={{ marginTop: '32px', maxWidth: '400px' }}>
@@ -1359,71 +1235,6 @@ const MockCheckout = () => {
           >
             ← Back to experiences
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // WOWCHER CHECKOUT — session locked to saved card, uses triggerUpsell()
-  if (step === 'wowcher-checkout') {
-    const brandLabel = wowcherPaymentMethod?.brand || 'CARD';
-    const last4 = wowcherPaymentMethod?.last4;
-
-    return (
-      <div className="layout-page">
-        <ExperienceBadge experience={experience} onChangeExperience={() => setStep('select')} />
-        <button style={backBtn} onClick={goBack}>← Back</button>
-
-        <div style={{ maxWidth: '560px' }}>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>One-click Checkout</h1>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '28px' }}>
-            Your saved card is ready. No card details needed — just confirm your order.
-          </p>
-
-          {/* Saved card display */}
-          {wowcherPaymentMethod && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '16px',
-              padding: '16px 20px', borderRadius: '12px', marginBottom: '24px',
-              background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-              color: '#fff',
-            }}>
-              <div style={{ width: '36px', height: '26px', borderRadius: '4px', background: 'linear-gradient(135deg, #d4af37 0%, #f2d06b 50%, #d4af37 100%)' }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '2px' }}>Paying with</div>
-                <div style={{ fontFamily: 'monospace', fontSize: '16px', letterSpacing: '2px' }}>
-                  {brandLabel} •••• •••• •••• {last4 || '????'}
-                </div>
-              </div>
-              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '20px', backgroundColor: '#4CAF50', fontWeight: '600' }}>SAVED</span>
-            </div>
-          )}
-
-          <super-single-checkout
-            ref={el => { if (el) { el.displayAuth = 'CARD'; el.supportCreditPopup = true; } }}
-            id="wowcher-single-checkout"
-            key={sessionToken}
-            amount={String(PRODUCT.price)}
-            checkout-session-token={sessionToken}
-            currency="GBP"
-          />
-
-          {isWowcherSdkReady && (
-            <button
-              onClick={handleWowcherPlaceOrder}
-              disabled={loading}
-              style={{
-                ...primaryBtn, marginTop: '20px',
-                backgroundColor: '#e91e8c',
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading ? 'Processing...' : `⚡ Pay ${PRODUCT.priceDisplay} with ••••${last4 || '????'}`}
-            </button>
-          )}
-
-          {error && <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>}
         </div>
       </div>
     );

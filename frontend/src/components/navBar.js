@@ -150,6 +150,15 @@ const NavBar = () => {
               >
                 Mock Checkout
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/wowcher"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                ⚡ Wowcher Upsell
+              </Link>
             </div>
           )}
         </div>
