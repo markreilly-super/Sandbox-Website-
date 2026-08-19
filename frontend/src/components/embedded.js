@@ -277,6 +277,7 @@ const CheckoutPage = () => {
     }); // intentionally NOT awaited
 
     try {
+      console.log(`[Proceed] Firing /proceed immediately — ${new Date().toISOString()}`);
       const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
