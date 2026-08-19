@@ -38,19 +38,19 @@ CREDENTIALS = {
         'api_key': "sk_test_n8Wy6QkSyLpANd-CdDZsIiBubwpJsvOlaG5LWCVD",
         'initiator_id': "e31e45fe-76c9-4ba2-ad41-c206481f3398",
         'brand_id': "0714ece1-629a-47ef-a01a-c79ae8dc2bab",
-        'base_url': "https://api.test.superpayments.com/2026-08-01"
+        'base_url': "https://api.test.superpayments.com/2026-04-01"
     },
     'staging': {
         'api_key': "sk_stag_06evkW7XDJ89eWEqMxbSWRo6nZftFOUt-QeTLmNa",
         'initiator_id': "39733f1a-8a06-47e2-9fdb-38c5c78662eb",
         'brand_id': "60202016-cada-4832-b792-ff3710b5c4ce",
-        'base_url': "https://api.staging.superpayments.com/2026-08-01"
+        'base_url': "https://api.staging.superpayments.com/2026-04-01"
     },
     'production': {
         'api_key': os.environ.get('SUPER_PROD_API_KEY', ''),
         'initiator_id': os.environ.get('SUPER_PROD_INITIATOR_ID', ''),
         'brand_id': os.environ.get('SUPER_PROD_BRAND_ID', ''),
-        'base_url': "https://api.superpayments.com/2026-08-01"
+        'base_url': "https://api.superpayments.com/2026-04-01"
     },
     'custom': {
         'api_key': '',
@@ -237,8 +237,8 @@ def set_custom_credentials():
     data = request.get_json() or {}
     env_type = data.get('envType', 'test')  # which base URL to use
     base_url = (
-        "https://api.test.superpayments.com/2026-08-01" if env_type == 'test'
-        else "https://api.staging.superpayments.com/2026-08-01"
+        "https://api.test.superpayments.com/2026-04-01" if env_type == 'test'
+        else "https://api.staging.superpayments.com/2026-04-01"
     )
     CREDENTIALS['custom'] = {
         'api_key':      data.get('api_key', ''),
