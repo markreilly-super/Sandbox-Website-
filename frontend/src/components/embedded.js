@@ -260,26 +260,25 @@ const CheckoutPage = () => {
     setLoading(true);
     setErrorMessage('');
 
-    // ── TEMP TEST: reproduce Akbar's race condition ───────────────────────────
-    // submit() is fired but NOT awaited — /proceed is called immediately before
-    // the funding attempt has had time to attach to the payment intent.
-    // Expected: "did not have payment details provided — defaulting to web flow"
-    // and an empty activePaymentIntent (no fundingType/fundingAttemptId) in logs.
-    // TO REVERT: restore the await + SUCCESS check below.
-    // ─────────────────────────────────────────────────────────────────────────
-    window.superCheckout.submit({
-      customerInformation: {
-        firstName: billingDetails.firstName,
-        lastName: billingDetails.lastName,
-        email: billingDetails.email,
-        phoneNumber: billingDetails.phoneNumber,
-      },
-    }).then(result => { // intentionally NOT awaited — log fires after proceed
-      console.log(`[Submit] Result resolved — status: ${result?.status}, errorMessage: ${result?.errorMessage}`);
-    });
-
     try {
-      console.log(`[Proceed] Firing /proceed immediately — ${new Date().toISOString()}`);
+      const result = await window.superCheckout.submit({
+        customerInformation: {
+          firstName: billingDetails.firstName,
+          lastName: billingDetails.lastName,
+          email: billingDetails.email,
+          phoneNumber: billingDetails.phoneNumber,
+        },
+      });
+
+      console.log("Result Status " + result.status)
+
+      if (result.status === 'FAILURE') {
+        setErrorMessage(result.errorMessage || 'Payment Failed');
+        setLoading(false);
+        return;
+      }
+
+      // Backend Proceed call
       const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
