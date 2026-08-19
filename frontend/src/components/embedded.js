@@ -274,7 +274,9 @@ const CheckoutPage = () => {
         email: billingDetails.email,
         phoneNumber: billingDetails.phoneNumber,
       },
-    }); // intentionally NOT awaited
+    }).then(result => { // intentionally NOT awaited — log fires after proceed
+      console.log(`[Submit] Result resolved — status: ${result?.status}, errorMessage: ${result?.errorMessage}`);
+    });
 
     try {
       console.log(`[Proceed] Firing /proceed immediately — ${new Date().toISOString()}`);
