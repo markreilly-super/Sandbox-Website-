@@ -839,7 +839,7 @@ const MockCheckout = () => {
             </div>
             {expressSessionToken ? (
               <super-single-checkout
-                ref={el => { if (el) { el.displayAuth = 'EXPRESS_WALLETS'; el.paymentToDisplay = 'EXPRESS_WALLETS'; el.supportCreditPopup = true; } }}
+                ref={el => { if (el) { el.paymentToDisplay = 'EXPRESS_WALLETS'; el.supportCreditPopup = true; } }}
                 id="super-single-checkout-express"
                 amount={String(PRODUCT.price)}
                 checkout-session-token={expressSessionToken}

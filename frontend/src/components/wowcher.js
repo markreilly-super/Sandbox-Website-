@@ -12,7 +12,6 @@ const PRODUCT = {
 
 const DISPLAY_OPTIONS = [
   { value: 'CARD',            label: 'Card & BNPL',        emoji: '💳', description: 'Shows card entry and Buy Now Pay Later options.' },
-  { value: 'BNPL',            label: 'BNPL Only',          emoji: '🔄', description: 'Shows Buy Now Pay Later only.' },
   { value: 'EXPRESS_WALLETS', label: 'Apple & Google Pay', emoji: '📱', description: 'Shows Apple Pay and Google Pay express buttons.' },
   { value: 'APPLE_PAY',       label: 'Apple Pay',          emoji: '🍎', description: 'Shows Apple Pay only.' },
   { value: 'GOOGLE_PAY',      label: 'Google Pay',         emoji: '🔵', description: 'Shows Google Pay only.' },
@@ -60,6 +59,7 @@ const WowcherCheckout = () => {
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
   const [isSdkReady, setIsSdkReady] = useState(false);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
+  const [displayAuth, setDisplayAuth] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -284,7 +284,23 @@ const WowcherCheckout = () => {
           </button>
         </div>
         <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Payment Display</h1>
-        <p style={{ color: '#666', marginBottom: '32px', fontSize: '15px' }}>Choose which payment method to show in the checkout.</p>
+        <p style={{ color: '#666', marginBottom: '24px', fontSize: '15px' }}>Choose which payment method to show in the checkout.</p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px', padding: '14px 18px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0', borderRadius: '10px', maxWidth: '360px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flex: 1, fontSize: '14px', fontWeight: '600' }}>
+            <input
+              type="checkbox"
+              checked={displayAuth}
+              onChange={e => setDisplayAuth(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            displayAuth
+          </label>
+          <span style={{ fontSize: '12px', fontFamily: 'monospace', backgroundColor: displayAuth ? '#e8f5e9' : '#fff', color: displayAuth ? '#2e7d32' : '#888', border: `1px solid ${displayAuth ? '#a5d6a7' : '#e0e0e0'}`, padding: '2px 10px', borderRadius: '4px', fontWeight: '600' }}>
+            {displayAuth ? 'true' : 'false'}
+          </span>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', maxWidth: '800px' }}>
           {DISPLAY_OPTIONS.map(opt => (
             <div
@@ -389,7 +405,7 @@ const WowcherCheckout = () => {
             {sessionToken && (
               <super-checkout
                 key={sessionToken}
-                amount={String(PRODUCT.price)}
+                amount={PRODUCT.price}
                 checkout-session-token={sessionToken}
               />
             )}
@@ -455,10 +471,10 @@ const WowcherCheckout = () => {
           </p>
 
           <super-single-checkout
-            ref={el => { if (el) { el.displayAuth = paymentToDisplay; el.paymentToDisplay = paymentToDisplay; el.supportCreditPopup = true; } }}
+            ref={el => { if (el) { el.paymentToDisplay = paymentToDisplay; el.displayAuth = displayAuth; el.supportCreditPopup = true; } }}
             id="wowcher-single-checkout"
             key={sessionToken}
-            amount={String(PRODUCT.price)}
+            amount={PRODUCT.price}
             checkout-session-token={sessionToken}
             currency="GBP"
           />

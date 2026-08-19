@@ -260,25 +260,23 @@ const CheckoutPage = () => {
     setLoading(true);
     setErrorMessage('');
 
+    // ── TEMP TEST: reproduce Akbar's race condition ───────────────────────────
+    // submit() is fired but NOT awaited — /proceed is called immediately before
+    // the funding attempt has had time to attach to the payment intent.
+    // Expected: "did not have payment details provided — defaulting to web flow"
+    // and an empty activePaymentIntent (no fundingType/fundingAttemptId) in logs.
+    // TO REVERT: restore the await + SUCCESS check below.
+    // ─────────────────────────────────────────────────────────────────────────
+    window.superCheckout.submit({
+      customerInformation: {
+        firstName: billingDetails.firstName,
+        lastName: billingDetails.lastName,
+        email: billingDetails.email,
+        phoneNumber: billingDetails.phoneNumber,
+      },
+    }); // intentionally NOT awaited
+
     try {
-      const result = await window.superCheckout.submit({
-        customerInformation: {
-          firstName: billingDetails.firstName,
-          lastName: billingDetails.lastName,
-          email: billingDetails.email,
-          phoneNumber: billingDetails.phoneNumber,
-        },
-      });
-
-      console.log("Result Status " + result.status)
-
-      if (result.status === 'FAILURE') {
-        setErrorMessage(result.errorMessage || 'Payment Failed');
-        setLoading(false);
-        return;
-      }
-
-      // Backend Proceed call
       const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -295,7 +293,7 @@ const CheckoutPage = () => {
       console.log("Proceed Response Redirect URL: " + proceedData.redirectUrl)
       console.log("Proceed Response Decline Reason: " + proceedData.extensions?.issues?.declineReason)
       if (proceedData.redirectUrl) {
-        window.location.href = proceedData.redirectUrl; 
+        window.location.href = proceedData.redirectUrl;
       }
     } catch (err) {
       setErrorMessage('Communication error with server.');
