@@ -60,6 +60,7 @@ const WowcherCheckout = () => {
   const [isSdkReady, setIsSdkReady] = useState(false);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
   const [displayAuth, setDisplayAuth] = useState(false);
+  const [isCardValid, setIsCardValid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -82,11 +83,17 @@ const WowcherCheckout = () => {
   useEffect(() => {
     if (step !== 'save-card-checkout' || !sessionToken) return;
     setIsSingleSdkReady(false);
+    setIsCardValid(false);
     const interval = setInterval(() => {
       const el = document.querySelector('super-single-checkout#wowcher-single-checkout');
       if (el && typeof el.submit === 'function') {
         setIsSingleSdkReady(true);
         clearInterval(interval);
+        if (typeof el.registerCardDetailsHandler === 'function') {
+          el.registerCardDetailsHandler((event) => {
+            setIsCardValid(!!event.detail?.cardDetailsValid);
+          });
+        }
       }
     }, 500);
     return () => clearInterval(interval);
@@ -482,10 +489,11 @@ const WowcherCheckout = () => {
           {isSingleSdkReady && (
             <button
               onClick={handleSaveCardPlaceOrder}
-              disabled={loading}
+              disabled={loading || !isCardValid}
               style={{
                 ...primaryBtn, marginTop: '20px', backgroundColor: '#1976d2',
-                opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: (loading || !isCardValid) ? 0.4 : 1,
+                cursor: (loading || !isCardValid) ? 'not-allowed' : 'pointer',
               }}
             >
               {loading ? 'Processing...' : `Place Order — ${PRODUCT.priceDisplay}`}
