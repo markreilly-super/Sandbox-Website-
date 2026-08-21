@@ -90,8 +90,12 @@ const WowcherCheckout = () => {
         setIsSingleSdkReady(true);
         clearInterval(interval);
         if (typeof el.registerCardDetailsHandler === 'function') {
+          let hasBeenInvalid = false;
           el.registerCardDetailsHandler((event) => {
-            setIsCardValid(!!event.detail?.cardDetailsValid);
+            const valid = !!event.detail?.cardDetailsValid;
+            if (!valid) hasBeenInvalid = true;
+            // Only enable once the form has been invalid (user interacted) then becomes valid
+            setIsCardValid(hasBeenInvalid && valid);
           });
         }
       }
