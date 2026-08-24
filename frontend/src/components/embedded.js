@@ -284,6 +284,8 @@ const CheckoutPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: sdkConfig.amount,
+          firstName: billingDetails.firstName,
+          lastName: billingDetails.lastName,
           email: billingDetails.email,
           phone: billingDetails.phoneNumber,
           externalReference: `ORDER_${Date.now()}`,
