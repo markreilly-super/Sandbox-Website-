@@ -445,8 +445,6 @@ def proceed_checkout(session_id):
             "phone": frontend_data.get("phone") or "07700900000"
         },
         "billingAddress": {
-            "firstName": frontend_data.get("firstName") or "Test",
-            "lastName": frontend_data.get("lastName") or "User",
             "addressLine1": "123 Test Street",
             "city": "London",
             "country": "GB",
