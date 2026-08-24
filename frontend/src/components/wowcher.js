@@ -488,6 +488,7 @@ const WowcherCheckout = () => {
             amount={PRODUCT.price}
             checkout-session-token={sessionToken}
             currency="GBP"
+            support-credit-popup="true"
           />
 
           {isSingleSdkReady && (
