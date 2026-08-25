@@ -60,6 +60,7 @@ const WowcherCheckout = () => {
   const [isSdkReady, setIsSdkReady] = useState(false);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
   const [displayAuth, setDisplayAuth] = useState(false);
+  const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
   const [isCardValid, setIsCardValid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -203,7 +204,7 @@ const WowcherCheckout = () => {
     setError('');
     try {
       const el = document.getElementById('wowcher-single-checkout');
-      const result = await el.submit();
+      const result = await el.submit({ amount: checkoutAmount });
       console.log('[SaveCard] submit result:', result);
       if (result?.status === 'FAILURE') {
         setError(result.errorMessage || 'Payment failed. Please try again.');
@@ -214,7 +215,7 @@ const WowcherCheckout = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: PRODUCT.price,
+          amount: checkoutAmount,
           email: billingRef.current.email,
           phone: billingRef.current.phone,
           externalReference: `WOWCHER_ORDER_${Date.now()}`,
@@ -373,8 +374,19 @@ const WowcherCheckout = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#4CAF50', marginBottom: '12px' }}>
             <span>Delivery</span><span>FREE</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '17px', paddingTop: '12px', borderTop: '2px solid #333' }}>
-            <span>Total</span><span>{PRODUCT.priceDisplay}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700', fontSize: '17px', paddingTop: '12px', borderTop: '2px solid #333' }}>
+            <span>Charge Amount</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontWeight: '400', fontSize: '14px', color: '#888' }}>£</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={(checkoutAmount / 100).toFixed(2)}
+                onChange={e => setCheckoutAmount(Math.round(parseFloat(e.target.value || 0) * 100))}
+                style={{ width: '90px', padding: '6px 10px', borderRadius: '6px', border: '2px solid #333', fontSize: '16px', fontWeight: '700', textAlign: 'right' }}
+              />
+            </div>
           </div>
         </div>
 
@@ -485,7 +497,7 @@ const WowcherCheckout = () => {
             ref={el => { if (el) { el.paymentToDisplay = paymentToDisplay; el.displayAuth = displayAuth; el.supportCreditPopup = true; } }}
             id="wowcher-single-checkout"
             key={sessionToken}
-            amount={PRODUCT.price}
+            amount={checkoutAmount}
             checkout-session-token={sessionToken}
             currency="GBP"
             support-credit-popup="true"
