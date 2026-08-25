@@ -494,11 +494,11 @@ const WowcherCheckout = () => {
           {isSingleSdkReady && (
             <button
               onClick={handleSaveCardPlaceOrder}
-              disabled={loading || !isCardValid}
+              disabled={loading || (paymentToDisplay === 'CARD' && !isCardValid)}
               style={{
                 ...primaryBtn, marginTop: '20px', backgroundColor: '#1976d2',
-                opacity: (loading || !isCardValid) ? 0.4 : 1,
-                cursor: (loading || !isCardValid) ? 'not-allowed' : 'pointer',
+                opacity: (loading || (paymentToDisplay === 'CARD' && !isCardValid)) ? 0.4 : 1,
+                cursor: (loading || (paymentToDisplay === 'CARD' && !isCardValid)) ? 'not-allowed' : 'pointer',
               }}
             >
               {loading ? 'Processing...' : `Place Order — ${PRODUCT.priceDisplay}`}
