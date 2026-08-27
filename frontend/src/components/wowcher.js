@@ -84,19 +84,15 @@ const WowcherCheckout = () => {
   useEffect(() => {
     if (step !== 'save-card-checkout' || !sessionToken) return;
     setIsSingleSdkReady(false);
-    setIsCardValid(false);
+    setIsCardValid(true);
     const interval = setInterval(() => {
       const el = document.querySelector('super-single-checkout#wowcher-single-checkout');
       if (el && typeof el.submit === 'function') {
         setIsSingleSdkReady(true);
         clearInterval(interval);
         if (typeof el.registerCardDetailsHandler === 'function') {
-          let hasBeenInvalid = false;
           el.registerCardDetailsHandler((event) => {
-            const valid = !!event.detail?.cardDetailsValid;
-            if (!valid) hasBeenInvalid = true;
-            // Only enable once the form has been invalid (user interacted) then becomes valid
-            setIsCardValid(hasBeenInvalid && valid);
+            setIsCardValid(!!event.detail?.cardDetailsValid);
           });
         }
       }
