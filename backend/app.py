@@ -474,7 +474,7 @@ def proceed_checkout(session_id):
         payload["customer"] = {
             "id": frontend_data.get("customerId"),
             "savePaymentMethodOptions": {
-                "futureUsage": "OFF_SESSION",
+                "futureUsage": "ON_SESSION",
             },
         }
     elif upsell_flow:
