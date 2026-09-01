@@ -374,13 +374,10 @@ def create_checkout():
 
     if customer_id:
         if upsell_flow and payment_method_id:
-            # Upsell: session locked to a specific saved card, customer is present
+            # Upsell: session locked to a specific saved card
             payload["customer"] = {
                 "id": customer_id,
                 "existingPaymentMethodId": payment_method_id,
-                "savePaymentMethodOptions": {
-                    "futureUsage": "ON_SESSION",
-                },
             }
         elif wowcher_flow:
             # Save Card + Take Payment: save card for future off-session use
