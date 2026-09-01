@@ -380,12 +380,9 @@ def create_checkout():
                 "existingPaymentMethodId": payment_method_id,
             }
         elif wowcher_flow:
-            # Save Card + Take Payment: save card for future off-session use
+            # Save Card + Take Payment
             payload["customer"] = {
                 "id": customer_id,
-                "savePaymentMethodOptions": {
-                    "futureUsage": "OFF_SESSION",
-                },
             }
         else:
             payload["customer"] = {
@@ -423,6 +420,8 @@ def proceed_checkout(session_id):
     }
 
     frontend_data = request.json
+    upsell_flow = frontend_data.get("upsellFlow", False)
+    wowcher_flow = frontend_data.get("wowcherFlow", False)
 
     payload = {
         "amount": frontend_data.get("amount", 5000), # Default to 5000 (e.g. £50.00) if not sent
@@ -469,6 +468,11 @@ def proceed_checkout(session_id):
     }
   ],
     }
+
+    if upsell_flow:
+        payload["savePaymentMethodOptions"] = {"futureUsage": "ON_SESSION"}
+    elif wowcher_flow:
+        payload["savePaymentMethodOptions"] = {"futureUsage": "OFF_SESSION"}
 
     try:
         print(f"--- Step 4: Proceeding for Session {session_id} ---")

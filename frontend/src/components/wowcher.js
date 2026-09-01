@@ -180,6 +180,7 @@ const WowcherCheckout = () => {
           email: billingRef.current.email,
           phone: billingRef.current.phone,
           externalReference: `UPSELL_ORDER_${Date.now()}`,
+          upsellFlow: true,
         }),
       });
       const proceedData = await response.json();
@@ -215,6 +216,7 @@ const WowcherCheckout = () => {
           email: billingRef.current.email,
           phone: billingRef.current.phone,
           externalReference: `WOWCHER_ORDER_${Date.now()}`,
+          wowcherFlow: true,
         }),
       });
       const proceedData = await response.json();
