@@ -88,11 +88,17 @@ const WowcherCheckout = () => {
     return () => clearInterval(interval);
   }, [step, sessionToken]);
 
-  // ── Shared: load customer from localStorage ───────────────────────────────
-  const loadCustomer = async () => {
+  // ── Load customer ID from localStorage ───────────────────────────────────
+  const loadCustomerId = () => {
     const env = localStorage.getItem('super_environment') || 'test';
     const storedCustomerId = localStorage.getItem(`super_customer_id_${env}`);
-    if (!storedCustomerId) throw new Error('No saved customer found. Please add a card on the Account Settings page first.');
+    if (!storedCustomerId) throw new Error('No saved customer found. Please create a customer on the Account Settings page first.');
+    return storedCustomerId;
+  };
+
+  // ── Upsell only: also requires an enabled saved card ─────────────────────
+  const loadCustomer = async () => {
+    const storedCustomerId = loadCustomerId();
     const custRes = await fetch(`${API_BASE}/customers/${storedCustomerId}`);
     const custData = await custRes.json();
     billingRef.current = { email: custData.emailAddress || '', phone: custData.phoneNumber || '' };
@@ -129,7 +135,7 @@ const WowcherCheckout = () => {
     setLoading(true);
     setError('');
     try {
-      const { customerId: cid } = await loadCustomer();
+      const cid = loadCustomerId();
       const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
