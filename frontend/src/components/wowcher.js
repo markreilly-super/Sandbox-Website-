@@ -72,7 +72,7 @@ const WowcherCheckout = () => {
     if (step !== 'upsell-checkout' || !sessionToken) return;
     setIsSdkReady(false);
     const interval = setInterval(() => {
-      if (typeof window.superCheckout?.submit === 'function') {
+      if (typeof window.superCheckout?.triggerUpsell === 'function') {
         setIsSdkReady(true);
         clearInterval(interval);
       }
@@ -161,12 +161,15 @@ const WowcherCheckout = () => {
 
   // ── handleUpsellPlaceOrder: submit locked session then /proceed ──────────
   const handleUpsellPlaceOrder = async () => {
-    if (!window.superCheckout?.submit) return;
+    if (!window.superCheckout?.triggerUpsell) return;
     setLoading(true);
     setError('');
     try {
-      const result = await window.superCheckout.submit();
-      console.log('[Upsell] submit result:', result);
+      const result = await window.superCheckout.triggerUpsell({
+        amount: PRODUCT.price,
+        checkoutSession: sessionToken,
+      });
+      console.log('[Upsell] triggerUpsell result:', result);
       if (result?.status === 'FAILURE') {
         setError(result.errorMessage || 'Something went wrong. No money has been taken from your account. Please try again.');
         setLoading(false);
