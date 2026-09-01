@@ -469,10 +469,16 @@ def proceed_checkout(session_id):
   ],
     }
 
-    if upsell_flow:
+    if wowcher_flow:
+        payload["preferNativeActions"] = True
+        payload["customer"] = {
+            "id": frontend_data.get("customerId"),
+            "savePaymentMethodOptions": {
+                "futureUsage": "OFF_SESSION",
+            },
+        }
+    elif upsell_flow:
         payload["savePaymentMethodOptions"] = {"futureUsage": "ON_SESSION"}
-    elif wowcher_flow:
-        payload["savePaymentMethodOptions"] = {"futureUsage": "OFF_SESSION"}
 
     try:
         print(f"--- Step 4: Proceeding for Session {session_id} ---")

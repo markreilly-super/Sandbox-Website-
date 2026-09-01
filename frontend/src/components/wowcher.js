@@ -57,7 +57,7 @@ const WowcherCheckout = () => {
   const [paymentToDisplay, setPaymentToDisplay] = useState(null);
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
-  const [isSdkReady, setIsSdkReady] = useState(false);
+  const [customerId, setCustomerId] = useState(null);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
   const [displayAuth, setDisplayAuth] = useState(false);
   const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
@@ -67,18 +67,6 @@ const WowcherCheckout = () => {
 
   const billingRef = useRef({ email: '', phone: '' });
 
-  // ── Poll for super-checkout SDK readiness (upsell flow) ──────────────────
-  useEffect(() => {
-    if (step !== 'upsell-checkout' || !sessionToken) return;
-    setIsSdkReady(false);
-    const interval = setInterval(() => {
-      if (typeof window.superCheckout?.triggerUpsell === 'function') {
-        setIsSdkReady(true);
-        clearInterval(interval);
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [step, sessionToken]);
 
   // ── Poll for super-single-checkout readiness (save-card flow) ────────────
   useEffect(() => {
@@ -141,14 +129,15 @@ const WowcherCheckout = () => {
     setLoading(true);
     setError('');
     try {
-      const { customerId } = await loadCustomer();
+      const { customerId: cid } = await loadCustomer();
       const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, wowcherFlow: true }),
+        body: JSON.stringify({ customerId: cid, wowcherFlow: true }),
       });
       const sessData = await sessRes.json();
       if (!sessData.checkoutSessionToken) throw new Error(sessData.detail || 'Failed to create checkout session');
+      setCustomerId(cid);
       setSessionToken(sessData.checkoutSessionToken);
       setCheckoutSessionId(sessData.checkoutSessionId);
       setStep('save-card-checkout');
@@ -220,6 +209,7 @@ const WowcherCheckout = () => {
           phone: billingRef.current.phone,
           externalReference: `WOWCHER_ORDER_${Date.now()}`,
           wowcherFlow: true,
+          customerId,
         }),
       });
       const proceedData = await response.json();
@@ -445,22 +435,16 @@ const WowcherCheckout = () => {
             </div>
           </div>
 
-          {!isSdkReady && (
-            <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '12px' }}>Initializing…</p>
-          )}
-
-          {isSdkReady && (
-            <button
-              onClick={handleUpsellPlaceOrder}
-              disabled={loading}
-              style={{
-                ...primaryBtn, backgroundColor: '#e91e8c',
-                opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading ? 'Processing...' : `⚡ Place Order — ${PRODUCT.priceDisplay}`}
-            </button>
-          )}
+          <button
+            onClick={handleUpsellPlaceOrder}
+            disabled={loading}
+            style={{
+              ...primaryBtn, backgroundColor: '#e91e8c',
+              opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Processing...' : `⚡ Place Order — ${PRODUCT.priceDisplay}`}
+          </button>
 
           {error && <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>}
         </div>
