@@ -421,16 +421,13 @@ const WowcherCheckout = () => {
             Your saved card will be charged instantly — no card entry required.
           </p>
 
-          {/* Hidden — initialises window.superCheckout without showing the card form */}
-          <div style={{ display: 'none' }}>
-            {sessionToken && (
-              <super-checkout
-                key={sessionToken}
-                amount={PRODUCT.price}
-                checkout-session-token={sessionToken}
-              />
-            )}
-          </div>
+          {sessionToken && (
+            <super-checkout
+              key={sessionToken}
+              amount={String(PRODUCT.price)}
+              checkout-session-token={sessionToken}
+            />
+          )}
 
           <div style={{ backgroundColor: '#f9f9f9', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden', marginBottom: '28px' }}>
             <div style={{ padding: '14px 20px', fontWeight: '700', fontSize: '13px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#f0f0f0' }}>
