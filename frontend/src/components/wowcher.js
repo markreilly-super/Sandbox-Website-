@@ -12,6 +12,7 @@ const PRODUCT = {
 
 const DISPLAY_OPTIONS = [
   { value: 'CARD',            label: 'Card & BNPL',        emoji: '💳', description: 'Shows card entry and Buy Now Pay Later options.' },
+  { value: 'BNPL',            label: 'BNPL',               emoji: '🛒', description: 'Shows Buy Now Pay Later options only.' },
   { value: 'EXPRESS_WALLETS', label: 'Apple & Google Pay', emoji: '📱', description: 'Shows Apple Pay and Google Pay express buttons.' },
   { value: 'APPLE_PAY',       label: 'Apple Pay',          emoji: '🍎', description: 'Shows Apple Pay only.' },
   { value: 'GOOGLE_PAY',      label: 'Google Pay',         emoji: '🔵', description: 'Shows Google Pay only.' },
