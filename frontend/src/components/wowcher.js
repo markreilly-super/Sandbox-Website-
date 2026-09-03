@@ -68,19 +68,21 @@ const WowcherCheckout = () => {
 
   const billingRef = useRef({ email: '', phone: '' });
 
-  const handleProceedResponse = async (proceedData, label) => {
+  const handleProceedResponse = async (proceedData, el, label) => {
     console.log(`[${label}] proceed response:`, proceedData);
-    if (proceedData.redirectUrl) {
-      window.location.href = proceedData.redirectUrl;
+    if (proceedData.nativeNextAction) {
+      console.log(`[${label}] handling nativeNextAction via element.handleNextAction`);
+      const result = await el.handleNextAction(proceedData.nativeNextAction);
+      console.log(`[${label}] handleNextAction result:`, result);
+      if (result?.status === 'SUCCESS' && result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+      } else {
+        setError(result?.errorMessage || 'Payment failed. Please try again.');
+      }
       return;
     }
-    if (proceedData.nativeNextAction) {
-      console.log(`[${label}] handling nativeNextAction via superCheckout.handleNextAction`);
-      const result = await window.superCheckout.handleNextAction(proceedData.nativeNextAction);
-      console.log(`[${label}] handleNextAction result:`, result);
-      if (result?.status === 'FAILURE') {
-        setError(result.errorMessage || 'Payment failed. Please try again.');
-      }
+    if (proceedData.redirectUrl) {
+      window.location.href = proceedData.redirectUrl;
       return;
     }
     setError(proceedData.detail || 'No redirect URL returned.');
@@ -201,7 +203,8 @@ const WowcherCheckout = () => {
         }),
       });
       const proceedData = await response.json();
-      handleProceedResponse(proceedData, 'Upsell');
+      const checkoutEl = document.querySelector('super-checkout');
+      handleProceedResponse(proceedData, checkoutEl, 'Upsell');
     } catch (err) {
       console.error('[Upsell] error:', err);
       setError(err?.message || 'Communication error. Please try again.');
@@ -236,7 +239,7 @@ const WowcherCheckout = () => {
         }),
       });
       const proceedData = await response.json();
-      handleProceedResponse(proceedData, 'SaveCard');
+      handleProceedResponse(proceedData, el, 'SaveCard');
     } catch (err) {
       console.error('[SaveCard] error:', err);
       setError(err?.message || 'Communication error. Please try again.');
