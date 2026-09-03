@@ -71,13 +71,13 @@ const WowcherCheckout = () => {
   const handleProceedResponse = async (proceedData, el, label) => {
     console.log(`[${label}] proceed response:`, proceedData);
     if (proceedData.nativeNextAction) {
-      console.log(`[${label}] handling nativeNextAction via element.handleNextAction`);
+      console.log(`[${label}] calling handleNextAction on element`);
       const result = await el.handleNextAction(proceedData.nativeNextAction);
       console.log(`[${label}] handleNextAction result:`, result);
-      if (result?.status === 'SUCCESS' && result.redirectUrl) {
+      if (result.status === 'SUCCESS') {
         window.location.href = result.redirectUrl;
       } else {
-        setError(result?.errorMessage || 'Payment failed. Please try again.');
+        setError(result.errorMessage || 'Payment failed. Please try again.');
       }
       return;
     }
