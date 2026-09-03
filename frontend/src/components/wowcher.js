@@ -68,6 +68,24 @@ const WowcherCheckout = () => {
 
   const billingRef = useRef({ email: '', phone: '' });
 
+  const handleProceedResponse = async (proceedData, label) => {
+    console.log(`[${label}] proceed response:`, proceedData);
+    if (proceedData.redirectUrl) {
+      window.location.href = proceedData.redirectUrl;
+      return;
+    }
+    if (proceedData.nativeNextAction) {
+      console.log(`[${label}] handling nativeNextAction via superCheckout.handleNextAction`);
+      const result = await window.superCheckout.handleNextAction(proceedData.nativeNextAction);
+      console.log(`[${label}] handleNextAction result:`, result);
+      if (result?.status === 'FAILURE') {
+        setError(result.errorMessage || 'Payment failed. Please try again.');
+      }
+      return;
+    }
+    setError(proceedData.detail || 'No redirect URL returned.');
+  };
+
 
   // ── Poll for super-single-checkout readiness (save-card flow) ────────────
   useEffect(() => {
@@ -183,9 +201,7 @@ const WowcherCheckout = () => {
         }),
       });
       const proceedData = await response.json();
-      console.log('[Upsell] proceed response:', proceedData);
-      if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
-      else setError(proceedData.detail || 'No redirect URL returned.');
+      handleProceedResponse(proceedData, 'Upsell');
     } catch (err) {
       console.error('[Upsell] error:', err);
       setError(err?.message || 'Communication error. Please try again.');
@@ -220,9 +236,7 @@ const WowcherCheckout = () => {
         }),
       });
       const proceedData = await response.json();
-      console.log('[SaveCard] proceed response:', proceedData);
-      if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
-      else setError(proceedData.detail || 'No redirect URL returned.');
+      handleProceedResponse(proceedData, 'SaveCard');
     } catch (err) {
       console.error('[SaveCard] error:', err);
       setError(err?.message || 'Communication error. Please try again.');
