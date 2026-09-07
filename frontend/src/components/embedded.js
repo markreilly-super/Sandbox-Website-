@@ -85,6 +85,9 @@ const CheckoutPage = () => {
 
       if (ready) {
         console.log('✅ SDK submit method detected. Component is ready.');
+        const superCheckoutEl = document.querySelector('super-checkout');
+        console.log('[registerCardDetailsHandler] on window.superCheckout:', typeof window.superCheckout?.registerCardDetailsHandler);
+        console.log('[registerCardDetailsHandler] on super-checkout element:', typeof superCheckoutEl?.registerCardDetailsHandler);
         setIsSdkReady(true);
         
         // Ensure initial phone sync happens once the SDK is ready
