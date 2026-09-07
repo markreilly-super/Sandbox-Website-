@@ -88,6 +88,7 @@ const CheckoutPage = () => {
         console.log('✅ SDK submit method detected. Component is ready.');
         setIsSdkReady(true);
         window.superCheckout.registerCardDetailsHandler((event) => {
+          console.log('[registerCardDetailsHandler] event:', event);
           setIsCardValid(!!event.detail?.cardDetailsValid);
         });
         
