@@ -15,7 +15,8 @@ const CheckoutPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
   
   // Controls the "Place Order" button visibility based on the global SDK object
-  const [isSdkReady, setIsSdkReady] = useState(false); 
+  const [isSdkReady, setIsSdkReady] = useState(false);
+  const [isCardValid, setIsCardValid] = useState(true);
 
   const [sdkConfig, setSdkConfig] = useState(() => {
     const saved = localStorage.getItem('sdk_config');
@@ -85,10 +86,10 @@ const CheckoutPage = () => {
 
       if (ready) {
         console.log('✅ SDK submit method detected. Component is ready.');
-        const superCheckoutEl = document.querySelector('super-checkout');
-        console.log('[registerCardDetailsHandler] on window.superCheckout:', typeof window.superCheckout?.registerCardDetailsHandler);
-        console.log('[registerCardDetailsHandler] on super-checkout element:', typeof superCheckoutEl?.registerCardDetailsHandler);
         setIsSdkReady(true);
+        window.superCheckout.registerCardDetailsHandler((event) => {
+          setIsCardValid(!!event.detail?.cardDetailsValid);
+        });
         
         // Ensure initial phone sync happens once the SDK is ready
         if (!initialSyncDone.current) {
@@ -367,11 +368,11 @@ const CheckoutPage = () => {
             />
 
             {isSdkReady && (
-              <button 
+              <button
                 onClick={handlePlaceOrder}
-                disabled={loading}
-                style={{ 
-                  width: '100%', marginTop: '25px', padding: '18px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
+                disabled={loading || !isCardValid}
+                style={{
+                  width: '100%', marginTop: '25px', padding: '18px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: (loading || !isCardValid) ? 'not-allowed' : 'pointer', opacity: (loading || !isCardValid) ? 0.5 : 1
                 }}
               >
                 {loading ? 'Processing Order...' : `Place Order — £${(sdkConfig.amount / 100).toFixed(2)}`}
