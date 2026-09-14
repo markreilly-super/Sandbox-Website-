@@ -132,6 +132,8 @@ const WowcherCheckout = () => {
   const handleUpsellProceed = async () => {
     setLoading(true);
     setError('');
+    setSessionToken(null);
+    setCheckoutSessionId(null);
     try {
       const { customerId, enabledCard } = await loadCustomer();
       const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
