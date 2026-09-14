@@ -59,6 +59,7 @@ const WowcherCheckout = () => {
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
   const [customerId, setCustomerId] = useState(null);
+  const [cardLast4, setCardLast4] = useState(null);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
   const [displayAuth, setDisplayAuth] = useState(false);
   const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
@@ -136,10 +137,11 @@ const WowcherCheckout = () => {
     setCheckoutSessionId(null);
     try {
       const { customerId, enabledCard } = await loadCustomer();
+      setCardLast4(enabledCard.card?.last4 || null);
       const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, paymentMethodId: enabledCard.id, upsellFlow: true }),
+        body: JSON.stringify({ customerId, paymentMethodId: enabledCard.id, upsellFlow: true, amount: PRODUCT.price }),
       });
       const sessData = await sessRes.json();
       if (!sessData.checkoutSessionToken) throw new Error(sessData.detail || 'Failed to create checkout session');
@@ -469,7 +471,7 @@ const WowcherCheckout = () => {
               opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? 'Processing...' : `⚡ Place Order — ${PRODUCT.priceDisplay}`}
+            {loading ? 'Processing...' : `⚡ Place Order — ${PRODUCT.priceDisplay}${cardLast4 ? ' (•••• ' + cardLast4 + ')' : ''}`}
           </button>
 
           {error && <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>}
