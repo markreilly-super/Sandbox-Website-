@@ -177,13 +177,13 @@ const WowcherCheckout = () => {
 
   // ── handleUpsellPlaceOrder: submit locked session then /proceed ──────────
   const handleUpsellPlaceOrder = async () => {
-    if (!window.superCheckout?.triggerUpsell) return;
+    const upsellEl = document.querySelector('super-upsell-checkout');
+    if (!upsellEl) return;
     setLoading(true);
     setError('');
     try {
-      const result = await window.superCheckout.triggerUpsell({
+      const result = await upsellEl.triggerUpsell({
         amount: PRODUCT.price,
-        checkoutSession: sessionToken,
       });
       console.log('[Upsell] triggerUpsell result:', result);
       if (result?.status === 'FAILURE') {
@@ -203,8 +203,7 @@ const WowcherCheckout = () => {
         }),
       });
       const proceedData = await response.json();
-      const checkoutEl = document.querySelector('super-checkout');
-      handleProceedResponse(proceedData, checkoutEl, 'Upsell');
+      handleProceedResponse(proceedData, upsellEl, 'Upsell');
     } catch (err) {
       console.error('[Upsell] error:', err);
       setError(err?.message || 'Communication error. Please try again.');
@@ -439,9 +438,10 @@ const WowcherCheckout = () => {
           </p>
 
           {sessionToken && (
-            <super-checkout
+            <super-upsell-checkout
               key={sessionToken}
               amount={String(PRODUCT.price)}
+              currency="GBP"
               checkout-session-token={sessionToken}
             />
           )}

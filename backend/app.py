@@ -480,7 +480,7 @@ def proceed_checkout(session_id):
             },
         }
     elif upsell_flow:
-        payload["savePaymentMethodOptions"] = {"futureUsage": "ON_SESSION"}
+        payload["preferNativeActions"] = True
 
     try:
         print(f"--- Step 4: Proceeding for Session {session_id} ---")
