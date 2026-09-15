@@ -38,21 +38,21 @@ CREDENTIALS = {
         'api_key': "sk_test_n8Wy6QkSyLpANd-CdDZsIiBubwpJsvOlaG5LWCVD",
         'initiator_id': "e31e45fe-76c9-4ba2-ad41-c206481f3398",
         'brand_id': "0714ece1-629a-47ef-a01a-c79ae8dc2bab",
-        'base_url': "https://api.test.superpayments.com/2026-08-01",
+        'base_url': "https://api.test.superpayments.com",
         'webhook_secret': os.environ.get('SUPER_WEBHOOK_SECRET', ''),
     },
     'staging': {
         'api_key': "sk_stag_06evkW7XDJ89eWEqMxbSWRo6nZftFOUt-QeTLmNa",
         'initiator_id': "39733f1a-8a06-47e2-9fdb-38c5c78662eb",
         'brand_id': "60202016-cada-4832-b792-ff3710b5c4ce",
-        'base_url': "https://api.staging.superpayments.com/2026-08-01",
+        'base_url': "https://api.staging.superpayments.com",
         'webhook_secret': os.environ.get('SUPER_STAG_WEBHOOK_SECRET', ''),
     },
     'production': {
         'api_key': os.environ.get('SUPER_PROD_API_KEY', ''),
         'initiator_id': os.environ.get('SUPER_PROD_INITIATOR_ID', ''),
         'brand_id': os.environ.get('SUPER_PROD_BRAND_ID', ''),
-        'base_url': "https://api.superpayments.com/2026-08-01",
+        'base_url': "https://api.superpayments.com",
         'webhook_secret': os.environ.get('SUPER_PROD_WEBHOOK_SECRET', ''),
     },
     'custom': {
@@ -65,6 +65,9 @@ CREDENTIALS = {
 }
 
 current_env = 'test'
+current_api_version = '2026-04-01'
+
+API_VERSIONS = ['2026-04-01', '2026-08-01']
 
 # ── Stripe config ─────────────────────────────────────────────────────────────
 # Set STRIPE_SECRET_KEY in backend/.env (gitignored) or your shell environment
@@ -72,7 +75,10 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 stripe.api_key = STRIPE_SECRET_KEY
 
 def get_config():
-    return CREDENTIALS[current_env]
+    cfg = dict(CREDENTIALS[current_env])
+    if cfg.get('base_url'):
+        cfg['base_url'] = f"{cfg['base_url']}/{current_api_version}"
+    return cfg
 
 # ── Webhook signature verification ────────────────────────────────────────────
 # The webhook secret is the Signing Key found in the Super Portal:
@@ -221,6 +227,19 @@ def webhooks():
     })
     return 'ok', 200
 
+@app.route('/set-api-version', methods=['POST', 'GET'])
+def set_api_version():
+    global current_api_version
+    if request.method == 'GET':
+        return jsonify({'apiVersion': current_api_version, 'availableVersions': API_VERSIONS})
+    data = request.get_json() or {}
+    version = data.get('apiVersion')
+    if version in API_VERSIONS:
+        current_api_version = version
+        print(f"[API Version] Switched to: {current_api_version}")
+        return jsonify({'apiVersion': current_api_version})
+    return jsonify({'error': f'Invalid version. Choose from {API_VERSIONS}'}), 400
+
 @app.route('/set-environment', methods=['POST', 'GET'])
 def set_environment():
     global current_env
@@ -241,8 +260,8 @@ def set_custom_credentials():
     data = request.get_json() or {}
     env_type = data.get('envType', 'test')  # which base URL to use
     base_url = (
-        "https://api.test.superpayments.com/2026-04-01" if env_type == 'test'
-        else "https://api.staging.superpayments.com/2026-04-01"
+        "https://api.test.superpayments.com" if env_type == 'test'
+        else "https://api.staging.superpayments.com"
     )
     CREDENTIALS['custom'] = {
         'api_key':      data.get('api_key', ''),

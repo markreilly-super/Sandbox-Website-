@@ -59,6 +59,10 @@ const AccountPage = () => {
     return localStorage.getItem('super_environment') || 'test';
   });
 
+  const [apiVersion, setApiVersion] = useState(() => {
+    return localStorage.getItem('super_api_version') || '2026-04-01';
+  });
+
   // SDK debug logging toggle
   const [debugEnabled, setDebugEnabled] = useState(() => {
     return localStorage.getItem('_debug_') === 'true';
@@ -163,6 +167,16 @@ const AccountPage = () => {
     return () => clearInterval(check);
   }, [sessionToken]);
 
+
+  const handleApiVersionChange = async (newVersion) => {
+    await fetch(`${API_BASE}/set-api-version`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiVersion: newVersion }),
+    });
+    localStorage.setItem('super_api_version', newVersion);
+    setApiVersion(newVersion);
+  };
 
   const handleEnvironmentChange = async (newEnv) => {
     localStorage.setItem('super_environment', newEnv);
@@ -509,6 +523,26 @@ const AccountPage = () => {
           />
         </div>
         <button onClick={() => localStorage.setItem('sdk_config', JSON.stringify(config))} style={btnStyle}>Save Settings</button>
+
+        <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>API Version</h3>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {['2026-04-01', '2026-08-01'].map(v => (
+            <button
+              key={v}
+              onClick={() => handleApiVersionChange(v)}
+              style={{
+                padding: '8px 16px', borderRadius: '8px', border: '2px solid',
+                borderColor: apiVersion === v ? '#000' : '#ddd',
+                backgroundColor: apiVersion === v ? '#000' : '#fff',
+                color: apiVersion === v ? '#fff' : '#333',
+                fontWeight: apiVersion === v ? '700' : '400',
+                fontSize: '13px', cursor: 'pointer', fontFamily: 'monospace',
+              }}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Off-Session Card Registration Section */}
