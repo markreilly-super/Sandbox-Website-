@@ -406,9 +406,10 @@ def create_checkout():
                 "id": customer_id,
             }
         else:
-            payload["customer"] = {
-                "id": customer_id,
-            }
+            customer_obj = {"id": customer_id}
+            if current_api_version == '2026-04-01':
+                customer_obj["savePaymentMethod"] = True
+            payload["customer"] = customer_obj
 
     try:
         print(f"--- Step 1: Requesting session from {cfg['base_url']} ---")
