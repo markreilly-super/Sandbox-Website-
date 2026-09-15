@@ -113,14 +113,13 @@ const CheckoutPage = () => {
         // Log all available methods on window.superCheckout for diagnostics
         console.log('[Apple Pay] window.superCheckout methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.superCheckout)).concat(Object.keys(window.superCheckout)));
 
-        window.superCheckout.registerWalletsHandler(async (...args) => {
-          console.log('[Apple Pay] registerWalletsHandler fired — args:', args);
-          console.log('[Apple Pay] arg[0]:', args[0]);
-          if (args[0] && typeof args[0] === 'object') {
-            console.log('[Apple Pay] event keys:', Object.keys(args[0]));
-            console.log('[Apple Pay] event.detail:', args[0].detail);
-            console.log('[Apple Pay] event.type:', args[0].type);
-          }
+        window.superCheckout.registerWalletsHandler(async (event) => {
+          // Capture detail synchronously before any await (Safari loses the reference otherwise)
+          const eventType = event?.type;
+          const detail = event?.detail ? JSON.parse(JSON.stringify(event.detail)) : null;
+          console.log('[Apple Pay] event type:', eventType);
+          console.log('[Apple Pay] event.detail (snapshot):', detail);
+          console.log('[Apple Pay] detail keys:', detail ? Object.keys(detail) : 'null');
           try {
             const bd = billingDetailsRef.current;
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
