@@ -110,16 +110,9 @@ const CheckoutPage = () => {
         walletsListenerAdded.current = true;
         clearInterval(interval);
 
-        // Log all available methods on window.superCheckout for diagnostics
-        console.log('[Apple Pay] window.superCheckout methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.superCheckout)).concat(Object.keys(window.superCheckout)));
-
         window.superCheckout.registerWalletsHandler(async (event) => {
-          // Capture detail synchronously before any await (Safari loses the reference otherwise)
-          const eventType = event?.type;
           const detail = event?.detail ? JSON.parse(JSON.stringify(event.detail)) : null;
-          console.log('[Apple Pay] event type:', eventType);
-          console.log('[Apple Pay] event.detail (snapshot):', detail);
-          console.log('[Apple Pay] detail keys:', detail ? Object.keys(detail) : 'null');
+          console.log('[Wallets] payment type:', detail?.type);
           try {
             const bd = billingDetailsRef.current;
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
