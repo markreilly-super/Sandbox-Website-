@@ -178,6 +178,8 @@ const InitialPayOffSession = () => {
           phoneNumber: billingDetails.phoneNumber,
         },
       });
+      console.log('[PayOffSession] submit() result:', JSON.stringify(result, null, 2));
+      console.log('[PayOffSession] nextAction:', result?.nextAction ?? result?.paymentIntent?.nextAction);
       if (result.status === 'FAILURE') {
         setErrorMessage(result.errorMessage || 'Payment failed');
         setLoading(false);
