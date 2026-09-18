@@ -69,6 +69,10 @@ const WowcherCheckout = () => {
 
   const billingRef = useRef({ email: '', phone: '' });
 
+  // Always holds the latest session/customer/amount for the wallets handler closure
+  const walletCtxRef = useRef({});
+  const walletsHandlerRegistered = useRef(false);
+
   const handleProceedResponse = async (proceedData, el, label) => {
     console.log(`[${label}] proceed response:`, proceedData);
     if (proceedData.nativeNextAction) {
@@ -90,6 +94,10 @@ const WowcherCheckout = () => {
   };
 
 
+  useEffect(() => {
+    walletCtxRef.current = { checkoutSessionId, customerId, checkoutAmount };
+  }, [checkoutSessionId, customerId, checkoutAmount]);
+
   // ── Poll for super-single-checkout readiness (save-card flow) ────────────
   useEffect(() => {
     if (step !== 'save-card-checkout' || !sessionToken) return;
@@ -107,6 +115,53 @@ const WowcherCheckout = () => {
         }
       }
     }, 500);
+    return () => clearInterval(interval);
+  }, [step, sessionToken]);
+
+  // ── Register wallets handler on super-single-checkout (save-card flow) ───
+  // The SDK only renders the Apple Pay / Google Pay buttons once this is
+  // registered, so register as early as the element exposes the method.
+  useEffect(() => {
+    if (step !== 'save-card-checkout' || !sessionToken) return;
+    walletsHandlerRegistered.current = false;
+
+    const interval = setInterval(() => {
+      const el = document.getElementById('wowcher-single-checkout');
+      if (el && typeof el.registerWalletsHandler === 'function' && !walletsHandlerRegistered.current) {
+        walletsHandlerRegistered.current = true;
+        clearInterval(interval);
+
+        el.registerWalletsHandler(async (event) => {
+          console.log('[SaveCard] wallets handler fired:', event?.detail?.type);
+          setLoading(true);
+          setError('');
+          try {
+            const ctx = walletCtxRef.current;
+            const response = await fetch(`${API_BASE}/checkout-sessions/${ctx.checkoutSessionId}/proceed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                amount: ctx.checkoutAmount,
+                email: billingRef.current.email,
+                phone: billingRef.current.phone,
+                externalReference: `WOWCHER_ORDER_${Date.now()}`,
+                wowcherFlow: true,
+                customerId: ctx.customerId,
+              }),
+            });
+            const proceedData = await response.json();
+            handleProceedResponse(proceedData, el, 'SaveCardWallet');
+          } catch (err) {
+            console.error('[SaveCard] wallets handler error:', err);
+            setError(err?.message || 'Communication error. Please try again.');
+          } finally {
+            setLoading(false);
+          }
+        });
+        console.log('✅ [SaveCard] wallets handler registered');
+      }
+    }, 500);
+
     return () => clearInterval(interval);
   }, [step, sessionToken]);
 
