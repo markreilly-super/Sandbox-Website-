@@ -475,22 +475,6 @@ def proceed_checkout(session_id):
             "email": frontend_data.get("email") or "customer@example.com",
             "phone": frontend_data.get("phone") or "07700900000"
         },
-  "lineItems": [
-    {
-      "type": "AIRLINE",
-      "data": {
-        "flightNumber": "FR1234",
-        "flightDate": "2026-03-15T10:30:00+00:00",
-        "travellers": [
-          {
-            "name": "Test Name"
-          }
-        ],
-        "totalPrice": 3000,
-        "currency": "GBP"
-      }
-    }
-  ],
     }
 
     if wowcher_flow:
