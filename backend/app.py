@@ -488,30 +488,6 @@ def proceed_checkout(session_id):
     elif upsell_flow:
         payload["preferNativeActions"] = True
 
-    # ── TEMP: reproduce client 500 ────────────────────────────────────────────
-    # Client's exact payload (all-null addresses), with our initiator ID and
-    # our amount substituted. DELETE THIS BLOCK to restore normal behaviour.
-    payload = {
-        "shippingAddress": {
-            "addressLine1": None, "addressLine2": None, "addressLine3": None,
-            "city": None, "country": None, "postCode": None,
-            "firstName": None, "lastName": None, "phone": None, "email": None,
-        },
-        "billingAddress": {
-            "addressLine1": None, "addressLine2": None, "addressLine3": None,
-            "city": None, "country": None, "postCode": None,
-            "firstName": None, "lastName": None, "phone": None, "email": None,
-        },
-        "paymentInitiatorId": cfg['initiator_id'],
-        "currency": "GBP",
-        "amount": frontend_data.get("amount", 5000),
-        "successUrl": "http://localhost:5173/",
-        "failureUrl": "http://localhost:5173/",
-        "cancelUrl": "http://localhost:5173/",
-    }
-    print(f"[TEMP client-500 repro] payload: {payload}")
-    # ── END TEMP ──────────────────────────────────────────────────────────────
-
     try:
         print(f"--- Step 4: Proceeding for Session {session_id} ---")
         response = api_request('POST', proceed_url, headers, payload)
