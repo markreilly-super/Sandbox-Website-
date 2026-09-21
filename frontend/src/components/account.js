@@ -63,6 +63,10 @@ const AccountPage = () => {
     return localStorage.getItem('super_api_version') || '2026-04-01';
   });
 
+  const [creditPopup, setCreditPopup] = useState(() => {
+    return localStorage.getItem('super_credit_popup') !== 'false';
+  });
+
   // SDK debug logging toggle
   const [debugEnabled, setDebugEnabled] = useState(() => {
     return localStorage.getItem('_debug_') === 'true';
@@ -167,6 +171,11 @@ const AccountPage = () => {
     return () => clearInterval(check);
   }, [sessionToken]);
 
+
+  const handleCreditPopupChange = (enabled) => {
+    localStorage.setItem('super_credit_popup', String(enabled));
+    setCreditPopup(enabled);
+  };
 
   const handleApiVersionChange = async (newVersion) => {
     await fetch(`${API_BASE}/set-api-version`, {
@@ -540,6 +549,29 @@ const AccountPage = () => {
               }}
             >
               {v}
+            </button>
+          ))}
+        </div>
+
+        <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>Credit Popup</h3>
+        <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#666' }}>
+          Sets <code>support-credit-popup</code> on the Wowcher save-card checkout.
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {[{ label: 'Enabled', val: true }, { label: 'Disabled', val: false }].map(o => (
+            <button
+              key={o.label}
+              onClick={() => handleCreditPopupChange(o.val)}
+              style={{
+                padding: '8px 16px', borderRadius: '8px', border: '2px solid',
+                borderColor: creditPopup === o.val ? '#000' : '#ddd',
+                backgroundColor: creditPopup === o.val ? '#000' : '#fff',
+                color: creditPopup === o.val ? '#fff' : '#333',
+                fontWeight: creditPopup === o.val ? '700' : '400',
+                fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              {o.label}
             </button>
           ))}
         </div>

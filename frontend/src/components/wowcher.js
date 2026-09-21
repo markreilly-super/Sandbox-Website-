@@ -64,6 +64,7 @@ const WowcherCheckout = () => {
   const [displayAuth, setDisplayAuth] = useState(false);
   const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
   const [isCardValid, setIsCardValid] = useState(false);
+  const [supportCreditPopup] = useState(() => localStorage.getItem('super_credit_popup') !== 'false');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -559,13 +560,13 @@ const WowcherCheckout = () => {
           </p>
 
           <super-single-checkout
-            ref={el => { if (el) { el.paymentToDisplay = paymentToDisplay; el.displayAuth = displayAuth; el.supportCreditPopup = true; } }}
+            ref={el => { if (el) { el.paymentToDisplay = paymentToDisplay; el.displayAuth = displayAuth; el.supportCreditPopup = supportCreditPopup; } }}
             id="wowcher-single-checkout"
             key={sessionToken}
             amount={checkoutAmount}
             checkout-session-token={sessionToken}
             currency="GBP"
-            support-credit-popup="true"
+            support-credit-popup={String(supportCreditPopup)}
           />
 
           {isSingleSdkReady && (
