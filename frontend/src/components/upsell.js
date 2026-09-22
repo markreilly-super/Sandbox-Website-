@@ -38,7 +38,7 @@ const FLOWS = [
   },
 ];
 
-const WowcherBadge = ({ flow }) => {
+const FlowBadge = ({ flow }) => {
   const f = FLOWS.find(f => f.id === flow);
   return (
     <span style={{
@@ -46,12 +46,12 @@ const WowcherBadge = ({ flow }) => {
       padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
       backgroundColor: f ? f.color : '#e91e8c', color: '#fff',
     }}>
-      {f ? f.emoji : '⚡'} Wowcher{f ? ` — ${f.title}` : ''}
+      {f ? f.emoji : '⚡'} Checkout{f ? ` — ${f.title}` : ''}
     </span>
   );
 };
 
-const WowcherCheckout = () => {
+const UpsellCheckout = () => {
   // step: flow-select | display-select | basket | upsell-checkout | save-card-checkout
   const [step, setStep] = useState('flow-select');
   const [flow, setFlow] = useState(null);
@@ -105,7 +105,7 @@ const WowcherCheckout = () => {
     setIsSingleSdkReady(false);
     setIsCardValid(true);
     const interval = setInterval(() => {
-      const el = document.querySelector('super-single-checkout#wowcher-single-checkout');
+      const el = document.querySelector('super-single-checkout#flow-single-checkout');
       if (el && typeof el.submit === 'function') {
         setIsSingleSdkReady(true);
         clearInterval(interval);
@@ -127,7 +127,7 @@ const WowcherCheckout = () => {
     walletsHandlerRegistered.current = false;
 
     const interval = setInterval(() => {
-      const el = document.getElementById('wowcher-single-checkout');
+      const el = document.getElementById('flow-single-checkout');
       if (el && typeof el.registerWalletsHandler === 'function' && !walletsHandlerRegistered.current) {
         walletsHandlerRegistered.current = true;
         clearInterval(interval);
@@ -145,7 +145,7 @@ const WowcherCheckout = () => {
                 amount: ctx.checkoutAmount,
                 email: billingRef.current.email,
                 phone: billingRef.current.phone,
-                externalReference: `WOWCHER_ORDER_${Date.now()}`,
+                externalReference: `SAVECARD_ORDER_${Date.now()}`,
                 wowcherFlow: true,
                 customerId: ctx.customerId,
               }),
@@ -277,7 +277,7 @@ const WowcherCheckout = () => {
     setLoading(true);
     setError('');
     try {
-      const el = document.getElementById('wowcher-single-checkout');
+      const el = document.getElementById('flow-single-checkout');
       const result = await el.submit({ amount: checkoutAmount });
       console.log('[SaveCard] submit result:', result);
       if (result?.status === 'FAILURE') {
@@ -292,7 +292,7 @@ const WowcherCheckout = () => {
           amount: checkoutAmount,
           email: billingRef.current.email,
           phone: billingRef.current.phone,
-          externalReference: `WOWCHER_ORDER_${Date.now()}`,
+          externalReference: `SAVECARD_ORDER_${Date.now()}`,
           wowcherFlow: true,
           customerId,
         }),
@@ -326,10 +326,10 @@ const WowcherCheckout = () => {
             padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
             backgroundColor: '#e91e8c', color: '#fff',
           }}>
-            ⚡ Wowcher
+            ⚡ Checkout
           </span>
         </div>
-        <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Wowcher Integration</h1>
+        <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Upsell Integration</h1>
         <p style={{ color: '#666', marginBottom: '32px', fontSize: '15px' }}>Choose the flow to simulate.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '700px' }}>
           {FLOWS.map(f => (
@@ -364,7 +364,7 @@ const WowcherCheckout = () => {
     return (
       <div className="layout-page">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <WowcherBadge flow={flow} />
+          <FlowBadge flow={flow} />
           <button onClick={() => setStep('flow-select')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#666', textDecoration: 'underline', padding: 0 }}>
             ← Change flow
           </button>
@@ -419,7 +419,7 @@ const WowcherCheckout = () => {
     return (
       <div className="layout-page">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <WowcherBadge flow={flow} />
+          <FlowBadge flow={flow} />
           {selectedOpt && (
             <span style={{ fontSize: '13px', color: '#555', fontFamily: 'monospace', backgroundColor: '#f5f5f5', padding: '4px 10px', borderRadius: '20px' }}>
               {selectedOpt.emoji} {selectedOpt.value}
@@ -485,7 +485,7 @@ const WowcherCheckout = () => {
     return (
       <div className="layout-page">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <WowcherBadge flow={flow} />
+          <FlowBadge flow={flow} />
           <button onClick={() => setStep('basket')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#666', textDecoration: 'underline', padding: 0 }}>
             ← Back
           </button>
@@ -542,7 +542,7 @@ const WowcherCheckout = () => {
     return (
       <div className="layout-page">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <WowcherBadge flow={flow} />
+          <FlowBadge flow={flow} />
           {selectedOpt && (
             <span style={{ fontSize: '13px', color: '#555', fontFamily: 'monospace', backgroundColor: '#f5f5f5', padding: '4px 10px', borderRadius: '20px' }}>
               {selectedOpt.emoji} {selectedOpt.value}
@@ -561,7 +561,7 @@ const WowcherCheckout = () => {
 
           <super-single-checkout
             ref={el => { if (el) { el.paymentToDisplay = paymentToDisplay; el.displayAuth = displayAuth; el.supportCreditPopup = supportCreditPopup; } }}
-            id="wowcher-single-checkout"
+            id="flow-single-checkout"
             key={sessionToken}
             amount={checkoutAmount}
             checkout-session-token={sessionToken}
@@ -592,4 +592,4 @@ const WowcherCheckout = () => {
   return null;
 };
 
-export default WowcherCheckout;
+export default UpsellCheckout;

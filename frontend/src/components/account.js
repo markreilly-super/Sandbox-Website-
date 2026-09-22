@@ -555,7 +555,7 @@ const AccountPage = () => {
 
         <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>Credit Popup</h3>
         <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#666' }}>
-          Sets <code>support-credit-popup</code> on the Wowcher save-card checkout.
+          Sets <code>support-credit-popup</code> on the save-card checkout.
         </p>
         <div style={{ display: 'flex', gap: '10px' }}>
           {[{ label: 'Enabled', val: true }, { label: 'Disabled', val: false }].map(o => (
