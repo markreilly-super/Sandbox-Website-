@@ -488,6 +488,15 @@ def proceed_checkout(session_id):
     elif upsell_flow:
         payload["preferNativeActions"] = True
 
+    # Raw payload override — lets the Token Checkout page send a hand-edited
+    # proceed body verbatim. paymentInitiatorId is injected only if omitted,
+    # so the request stays valid without the caller needing to know the ID.
+    raw_payload = frontend_data.get("rawPayload")
+    if isinstance(raw_payload, dict):
+        payload = dict(raw_payload)
+        payload.setdefault("paymentInitiatorId", cfg['initiator_id'])
+        print(f"[proceed] RAW payload override: {payload}")
+
     try:
         print(f"--- Step 4: Proceeding for Session {session_id} ---")
         response = api_request('POST', proceed_url, headers, payload)

@@ -20,6 +20,28 @@ const TokenCheckout = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Editable proceed request body (Token Checkout lets you hand-craft this)
+  const [proceedBody, setProceedBody] = useState(() => JSON.stringify({
+    amount: 15000,
+    currency: 'GBP',
+    externalReference: `ORDER_${Date.now()}`,
+    successUrl: `${window.location.origin}/success`,
+    failureUrl: `${window.location.origin}/failure`,
+    cancelUrl: `${window.location.origin}/cancel`,
+    shippingAddress: {
+      firstName: 'Test', lastName: 'User', addressLine1: '123 Test Street',
+      city: 'London', postCode: 'SW1A 1AA', country: 'GB',
+      email: 'customer@example.com', phone: '07700900000',
+    },
+    billingAddress: {
+      firstName: 'Test', lastName: 'User', addressLine1: '123 Test Street',
+      city: 'London', postCode: 'SW1A 1AA', country: 'GB',
+      email: 'customer@example.com', phone: '07700900000',
+    },
+  }, null, 2));
+  const [proceedResult, setProceedResult] = useState(null);
+  const [sendingProceed, setSendingProceed] = useState(false);
+
   const [billingDetails, setBillingDetails] = useState({
     firstName: 'Mark',
     lastName: 'Reilly',
@@ -184,6 +206,37 @@ const TokenCheckout = () => {
     setErrorMessage('');
   };
 
+  // Parses the textarea and POSTs it verbatim via the rawPayload override.
+  const sendProceed = async () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(proceedBody);
+    } catch (err) {
+      setProceedResult({ ok: false, text: `Invalid JSON: ${err.message}` });
+      return null;
+    }
+    const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawPayload: parsed }),
+    });
+    const data = await response.json();
+    setProceedResult({ ok: response.ok, text: `HTTP ${response.status}\n\n${JSON.stringify(data, null, 2)}` });
+    return data;
+  };
+
+  const handleSendProceedOnly = async () => {
+    setSendingProceed(true);
+    setProceedResult(null);
+    try {
+      await sendProceed();
+    } catch (err) {
+      setProceedResult({ ok: false, text: `Request failed: ${err.message}` });
+    } finally {
+      setSendingProceed(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!window.superCheckout) return;
     setLoading(true);
@@ -202,18 +255,8 @@ const TokenCheckout = () => {
         setLoading(false);
         return;
       }
-      const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: 15000,
-          email: billingDetails.email,
-          phone: billingDetails.phoneNumber,
-          externalReference: `ORDER_${Date.now()}`,
-        }),
-      });
-      const proceedData = await response.json();
-      if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
+      const proceedData = await sendProceed();
+      if (proceedData && proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
     } catch (err) {
       setErrorMessage('Communication error with server.');
     } finally {
@@ -311,6 +354,51 @@ const TokenCheckout = () => {
                 value={billingDetails.phoneNumber}
                 onChange={e => setBillingDetails({ ...billingDetails, phoneNumber: e.target.value })} />
             </div>
+
+            <h2 style={{ fontSize: '1.4rem', borderBottom: '2px solid #000', paddingBottom: '10px', marginTop: '32px' }}>
+              Proceed Request
+            </h2>
+            <p style={{ fontSize: '13px', color: '#666', margin: '10px 0' }}>
+              Sent verbatim to <code>/checkout-sessions/{checkoutSessionId}/proceed</code>.
+              Edit freely — <code>paymentInitiatorId</code> is added by the backend only if you omit it.
+              "Place Order" uses this same body after the card is submitted.
+            </p>
+            <textarea
+              value={proceedBody}
+              onChange={e => setProceedBody(e.target.value)}
+              spellCheck={false}
+              style={{
+                width: '100%', minHeight: '320px', boxSizing: 'border-box',
+                fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5',
+                padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+                backgroundColor: '#fafafa', resize: 'vertical',
+              }}
+            />
+            <button
+              onClick={handleSendProceedOnly}
+              disabled={sendingProceed}
+              style={{
+                width: '100%', marginTop: '12px', padding: '14px',
+                backgroundColor: '#1976d2', color: '#fff', border: 'none',
+                borderRadius: '8px', fontSize: '15px', fontWeight: 'bold',
+                cursor: sendingProceed ? 'not-allowed' : 'pointer',
+                opacity: sendingProceed ? 0.7 : 1,
+              }}
+            >
+              {sendingProceed ? 'Sending...' : 'Send Proceed Request'}
+            </button>
+
+            {proceedResult && (
+              <pre style={{
+                marginTop: '12px', padding: '12px', borderRadius: '8px',
+                border: '1px solid', borderColor: proceedResult.ok ? '#4CAF50' : '#e74c3c',
+                backgroundColor: proceedResult.ok ? '#f1f8f2' : '#fdf3f2',
+                fontSize: '12px', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                maxHeight: '260px', overflowY: 'auto',
+              }}>
+                {proceedResult.text}
+              </pre>
+            )}
           </>
         )}
       </div>
