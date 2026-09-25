@@ -16,6 +16,7 @@ import TokenCheckout from './components/tokenCheckout';
 import WebhookLog from './components/webhookLog';
 import MockCheckout from './components/mockCheckout';
 import UpsellCheckout from './components/upsell';
+import CardValidityCheckout from './components/cardValidity';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global card-data interceptor – runs at module load time, before any SDK
@@ -170,6 +171,7 @@ const App = () => {
         <Route path="/webhooks" element={<WebhookLog />} />
         <Route path="/mock-checkout" element={<MockCheckout />} />
         <Route path="/upsell" element={<UpsellCheckout />} />
+        <Route path="/card-validity" element={<CardValidityCheckout />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
       </Routes>

@@ -159,6 +159,15 @@ const NavBar = () => {
               >
                 ⚡ Upsell & Save Card
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/card-validity"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                Card Validity
+              </Link>
             </div>
           )}
         </div>
