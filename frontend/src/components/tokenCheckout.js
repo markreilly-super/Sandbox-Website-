@@ -20,9 +20,22 @@ const TokenCheckout = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const [sdkConfig] = useState(() => {
+    const saved = localStorage.getItem('sdk_config');
+    return saved ? JSON.parse(saved) : {
+      paymentMethodsOrder: 'BNPL,CARD,OPEN_BANKING',
+      preSelectedPaymentMethod: 'CARD',
+      title: 'Secure Checkout',
+      subtitle: 'Pay with Super and earn cash rewards',
+      amount: 15000,
+    };
+  });
+  // Saved configs from older builds may predate the amount field
+  const checkoutAmount = Number(sdkConfig.amount) || 15000;
+
   // Editable proceed request body (Token Checkout lets you hand-craft this)
   const [proceedBody, setProceedBody] = useState(() => JSON.stringify({
-    amount: 15000,
+    amount: checkoutAmount,
     currency: 'GBP',
     externalReference: `ORDER_${Date.now()}`,
     successUrl: `${window.location.origin}/success`,
@@ -47,16 +60,6 @@ const TokenCheckout = () => {
     lastName: 'Reilly',
     email: 'test@hotmail.com',
     phoneNumber: '07462753542',
-  });
-
-  const [sdkConfig] = useState(() => {
-    const saved = localStorage.getItem('sdk_config');
-    return saved ? JSON.parse(saved) : {
-      paymentMethodsOrder: 'BNPL,CARD,OPEN_BANKING',
-      preSelectedPaymentMethod: 'CARD',
-      title: 'Secure Checkout',
-      subtitle: 'Pay with Super and earn cash rewards',
-    };
   });
 
   const phoneRef = useRef(billingDetails.phoneNumber);
@@ -116,7 +119,7 @@ const TokenCheckout = () => {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                amount: 15000,
+                amount: checkoutAmount,
                 email: bd.email,
                 phone: bd.phoneNumber,
                 externalReference: `ORDER_${Date.now()}`,
@@ -410,7 +413,7 @@ const TokenCheckout = () => {
           <>
             <super-checkout
               key={sessionToken}
-              amount="15000"
+              amount={String(checkoutAmount)}
               checkout-session-token={sessionToken}
               title={sdkConfig.title}
               subtitle={sdkConfig.subtitle}
@@ -429,7 +432,7 @@ const TokenCheckout = () => {
                   cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
                 }}
               >
-                {loading ? 'Processing...' : 'Place Order — £150.00'}
+                {loading ? 'Processing...' : `Place Order — £${(checkoutAmount / 100).toFixed(2)}`}
               </button>
             )}
             {errorMessage && (
