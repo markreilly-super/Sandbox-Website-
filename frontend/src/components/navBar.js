@@ -168,6 +168,15 @@ const NavBar = () => {
               >
                 Card Validity
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/bnpl-popup"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                BNPL Popup
+              </Link>
             </div>
           )}
         </div>
