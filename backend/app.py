@@ -521,6 +521,22 @@ def proceed_checkout(session_id):
 
 # new endpoints for Off-Session Payments
 
+@app.route('/customers', methods=['GET'])
+def list_customers():
+    """List customers with their saved payment methods (paginated)."""
+    cfg = get_config()
+    headers = {'Authorization': cfg['api_key'], 'Content-Type': 'application/json'}
+    page = request.args.get('page', '1')
+    try:
+        url = f"{cfg['base_url']}/customers?page={page}"
+        print(f"--- Listing customers: {url} ---")
+        response = api_request('GET', url, headers)
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
+        print(f"Error listing customers: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/customers', methods=['POST'])
 def create_customer():
     cfg = get_config()

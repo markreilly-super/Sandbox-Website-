@@ -151,7 +151,7 @@ const TokenCheckout = () => {
         }
       }
     };
-  }, [checkoutSessionId]);
+  }, [checkoutSessionId, checkoutAmount]);
 
   // MutationObserver for BNPL phone injection
   useEffect(() => {

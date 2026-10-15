@@ -63,6 +63,14 @@ const AccountPage = () => {
     return localStorage.getItem('super_api_version') || '2026-04-01';
   });
 
+  const [custList, setCustList] = useState([]);
+  const [custPage, setCustPage] = useState(1);
+  const [custPageInfo, setCustPageInfo] = useState(null);
+  const [custListLoading, setCustListLoading] = useState(false);
+  const [custListError, setCustListError] = useState('');
+  const [custFilter, setCustFilter] = useState('ALL');
+  const [custSearch, setCustSearch] = useState('');
+
   const [creditPopup, setCreditPopup] = useState(() => {
     return localStorage.getItem('super_credit_popup') !== 'false';
   });
@@ -171,6 +179,32 @@ const AccountPage = () => {
     return () => clearInterval(check);
   }, [sessionToken]);
 
+
+  // ── Customer browser ─────────────────────────────────────────────────────
+  const loadCustomerList = async (page = 1) => {
+    setCustListLoading(true);
+    setCustListError('');
+    try {
+      const res = await fetch(`${API_BASE}/customers?page=${page}`);
+      const data = await res.json();
+      if (!res.ok || !data.items) {
+        setCustListError(data.error || data.detail || `HTTP ${res.status}`);
+        return;
+      }
+      setCustList(data.items);
+      setCustPageInfo(data.pageInfo || null);
+      setCustPage(page);
+    } catch (err) {
+      setCustListError(err.message);
+    } finally {
+      setCustListLoading(false);
+    }
+  };
+
+  const selectCustomer = (id) => {
+    localStorage.setItem(`super_customer_id_${environment}`, id);
+    setCustomerId(id);
+  };
 
   const handleCreditPopupChange = (enabled) => {
     localStorage.setItem('super_credit_popup', String(enabled));
@@ -631,6 +665,169 @@ const AccountPage = () => {
             ))}
           </div>
         )}
+
+        {/* ── Customer browser ───────────────────────────────────────────── */}
+        <div style={{ marginBottom: '18px', padding: '16px', backgroundColor: '#fafafa', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', flex: 1 }}>Browse Customers</h3>
+            <button
+              onClick={() => loadCustomerList(1)}
+              disabled={custListLoading}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', backgroundColor: '#1976d2', color: '#fff', fontSize: '12px', fontWeight: '600', cursor: custListLoading ? 'not-allowed' : 'pointer', opacity: custListLoading ? 0.6 : 1 }}
+            >
+              {custListLoading ? 'Loading...' : custList.length ? 'Refresh' : 'Load customers'}
+            </button>
+          </div>
+          <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#666' }}>
+            Pick a customer by the payment methods they have saved. Selecting one sets it
+            as the active customer for every flow.
+          </p>
+
+          {custListError && (
+            <p style={{ color: '#e74c3c', fontSize: '12px', margin: '0 0 10px' }}>{custListError}</p>
+          )}
+
+          {custList.length > 0 && (
+            <>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                {[
+                  { k: 'ALL', label: 'All' },
+                  { k: 'ENABLED', label: 'Has enabled card' },
+                  { k: 'WALLET', label: 'Wallet-saved' },
+                  { k: 'NONE', label: 'No payment methods' },
+                ].map(o => (
+                  <button
+                    key={o.k}
+                    onClick={() => setCustFilter(o.k)}
+                    style={{
+                      padding: '5px 11px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+                      border: '1px solid', borderColor: custFilter === o.k ? '#000' : '#ddd',
+                      backgroundColor: custFilter === o.k ? '#000' : '#fff',
+                      color: custFilter === o.k ? '#fff' : '#333',
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+                <input
+                  placeholder="Search id / reference"
+                  value={custSearch}
+                  onChange={e => setCustSearch(e.target.value)}
+                  style={{ flex: 1, minWidth: '160px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px' }}
+                />
+              </div>
+
+              <div style={{ maxHeight: '340px', overflowY: 'auto', border: '1px solid #e8e8e8', borderRadius: '8px', backgroundColor: '#fff' }}>
+                {custList
+                  .filter(cu => {
+                    const pms = cu.paymentMethods || [];
+                    const isWallet = pm => {
+                      const card = pm.card || {};
+                      return !!card.walletType || /applepay|googlepay|apple_pay|google_pay/i.test(card.brand || '');
+                    };
+                    if (custFilter === 'ENABLED' && !pms.some(pm => pm.type === 'CARD' && pm.status === 'ENABLED')) return false;
+                    if (custFilter === 'WALLET' && !pms.some(isWallet)) return false;
+                    if (custFilter === 'NONE' && pms.length > 0) return false;
+                    const q = custSearch.trim().toLowerCase();
+                    if (q && !`${cu.id} ${cu.externalReference || ''}`.toLowerCase().includes(q)) return false;
+                    return true;
+                  })
+                  .map(cu => {
+                    const pms = cu.paymentMethods || [];
+                    const active = cu.id === customerId;
+                    return (
+                      <div
+                        key={cu.id}
+                        style={{
+                          padding: '10px 12px', borderBottom: '1px solid #f0f0f0',
+                          backgroundColor: active ? '#e8f5e9' : 'transparent',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <code style={{ fontSize: '11px', color: '#333' }}>{cu.id}</code>
+                            {cu.externalReference && (
+                              <span style={{ fontSize: '11px', color: '#888', marginLeft: '8px' }}>
+                                {cu.externalReference}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => selectCustomer(cu.id)}
+                            disabled={active}
+                            style={{
+                              flexShrink: 0, padding: '4px 12px', borderRadius: '6px', fontSize: '12px',
+                              fontWeight: '600', cursor: active ? 'default' : 'pointer',
+                              border: '1px solid', borderColor: active ? '#4CAF50' : '#ddd',
+                              backgroundColor: active ? '#4CAF50' : '#fff',
+                              color: active ? '#fff' : '#333',
+                            }}
+                          >
+                            {active ? 'Active' : 'Use'}
+                          </button>
+                        </div>
+
+                        {pms.length === 0 ? (
+                          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '5px' }}>No payment methods</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '6px' }}>
+                            {pms.map(pm => {
+                              const card = pm.card || {};
+                              const wallet = card.walletType
+                                || (/applepay|apple_pay/i.test(card.brand || '') ? 'apple_pay' : null)
+                                || (/googlepay|google_pay/i.test(card.brand || '') ? 'google_pay' : null);
+                              const walletIcon = wallet === 'apple_pay' ? '🍎' : wallet === 'google_pay' ? '🔵' : null;
+                              const enabled = pm.status === 'ENABLED';
+                              return (
+                                <span
+                                  key={pm.id}
+                                  title={`${pm.id}\nstatus: ${pm.status}\nusage: ${pm.usage || '—'}\nwalletType: ${card.walletType || 'none'}\nbrand: ${card.brand || '—'}`}
+                                  style={{
+                                    fontSize: '11px', padding: '3px 8px', borderRadius: '20px',
+                                    border: '1px solid',
+                                    borderColor: enabled ? '#4CAF50' : pm.status === 'REQUIRES_ACTION' ? '#ffc107' : '#ddd',
+                                    backgroundColor: enabled ? '#f1f8f2' : pm.status === 'REQUIRES_ACTION' ? '#fff8e1' : '#fafafa',
+                                    color: enabled ? '#2e7d32' : '#777',
+                                  }}
+                                >
+                                  {walletIcon ? `${walletIcon} ` : ''}
+                                  {card.brand || pm.type}
+                                  {card.last4 ? ` ••${card.last4}` : ''}
+                                  {enabled ? '' : ` · ${pm.status}`}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {custPageInfo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', fontSize: '12px', color: '#666' }}>
+                  <button
+                    onClick={() => loadCustomerList(custPage - 1)}
+                    disabled={custPage <= 1 || custListLoading}
+                    style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff', cursor: custPage <= 1 ? 'not-allowed' : 'pointer', opacity: custPage <= 1 ? 0.5 : 1 }}
+                  >
+                    ← Prev
+                  </button>
+                  <span style={{ flex: 1, textAlign: 'center' }}>
+                    Page {custPageInfo.currentPage} of {custPageInfo.lastPage}
+                  </span>
+                  <button
+                    onClick={() => loadCustomerList(custPage + 1)}
+                    disabled={!custPageInfo.hasNextPage || custListLoading}
+                    style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff', cursor: !custPageInfo.hasNextPage ? 'not-allowed' : 'pointer', opacity: !custPageInfo.hasNextPage ? 0.5 : 1 }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Customer ID row */}
         {customerId && (
