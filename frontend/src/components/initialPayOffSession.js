@@ -106,7 +106,22 @@ const InitialPayOffSession = () => {
       }
     }, 500);
 
-    return () => clearInterval(interval);
+    // The SDK attaches the handler as a window listener and overwrites its
+    // AbortController on each register, so an unpaired re-register leaks a
+    // listener that can never be removed — and each extra listener fires another
+    // /proceed. Always unregister on cleanup.
+    return () => {
+      clearInterval(interval);
+      if (walletsListenerAdded.current) {
+        walletsListenerAdded.current = false;
+        try {
+          window.superCheckout?.unregisterWalletHandler?.();
+          console.log('🧹 Wallets handler unregistered');
+        } catch (err) {
+          console.warn('Wallets handler unregister failed:', err);
+        }
+      }
+    };
   }, [checkoutSessionId, customerId]);
 
   // MutationObserver for BNPL phone injection (same pattern as embedded.js)

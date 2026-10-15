@@ -163,7 +163,22 @@ const UpsellCheckout = () => {
       }
     }, 500);
 
-    return () => clearInterval(interval);
+    // The SDK attaches the handler as a window listener and overwrites its
+    // AbortController on each register, so an unpaired re-register leaks a
+    // listener that can never be removed — and each extra listener fires
+    // another /proceed. Always unregister on cleanup.
+    return () => {
+      clearInterval(interval);
+      if (walletsHandlerRegistered.current) {
+        walletsHandlerRegistered.current = false;
+        try {
+          document.getElementById('flow-single-checkout')?.unregisterWalletHandler?.();
+          console.log('🧹 [SaveCard] wallets handler unregistered');
+        } catch (err) {
+          console.warn('[SaveCard] wallets handler unregister failed:', err);
+        }
+      }
+    };
   }, [step, sessionToken]);
 
   // ── Load customer ID from localStorage ───────────────────────────────────
