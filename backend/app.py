@@ -393,9 +393,9 @@ def create_checkout():
 
     if customer_id:
         if upsell_flow and payment_method_id:
-            # Upsell: session locked to a specific saved card
-            payload["amount"] = frontend_data.get("amount", 4999)
-            payload["currency"] = "GBP"
+            # Upsell: session locked to a specific saved card.
+            # Per the docs the body is only customer + paymentInitiatorId —
+            # the amount belongs on the component and the proceed call.
             payload["customer"] = {
                 "id": customer_id,
                 "existingPaymentMethodId": payment_method_id,

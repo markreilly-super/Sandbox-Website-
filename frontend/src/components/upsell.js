@@ -68,7 +68,7 @@ const UpsellCheckout = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const billingRef = useRef({ email: '', phone: '' });
+  const billingRef = useRef({ firstName: '', lastName: '', email: '', phone: '' });
 
   // Always holds the latest session/customer/amount for the wallets handler closure
   const walletCtxRef = useRef({});
@@ -179,7 +179,12 @@ const UpsellCheckout = () => {
     const storedCustomerId = loadCustomerId();
     const custRes = await fetch(`${API_BASE}/customers/${storedCustomerId}`);
     const custData = await custRes.json();
-    billingRef.current = { email: custData.emailAddress || '', phone: custData.phoneNumber || '' };
+    billingRef.current = {
+      firstName: custData.firstName || '',
+      lastName: custData.lastName || '',
+      email: custData.emailAddress || '',
+      phone: custData.phoneNumber || '',
+    };
     const enabledCard = (custData.paymentMethods || []).find(pm => pm.type === 'CARD' && pm.status === 'ENABLED');
     if (!enabledCard) throw new Error('No enabled saved card found. Please add a card on the Account Settings page first.');
     return { customerId: storedCustomerId, enabledCard };
@@ -197,7 +202,7 @@ const UpsellCheckout = () => {
       const sessRes = await fetch(`${API_BASE}/checkout-sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, paymentMethodId: enabledCard.id, upsellFlow: true, amount: PRODUCT.price }),
+        body: JSON.stringify({ customerId, paymentMethodId: enabledCard.id, upsellFlow: true }),
       });
       const sessData = await sessRes.json();
       if (!sessData.checkoutSessionToken) throw new Error(sessData.detail || 'Failed to create checkout session');
@@ -242,12 +247,21 @@ const UpsellCheckout = () => {
     setLoading(true);
     setError('');
     try {
+      const b = billingRef.current;
+      const customerInformation = {};
+      if (b.firstName) customerInformation.firstName = b.firstName;
+      if (b.lastName) customerInformation.lastName = b.lastName;
+      if (b.email) customerInformation.email = b.email;
+      if (b.phone) customerInformation.phoneNumber = b.phone;
+
       const result = await upsellEl.triggerUpsell({
         amount: PRODUCT.price,
+        ...(Object.keys(customerInformation).length ? { customerInformation } : {}),
       });
       console.log('[Upsell] triggerUpsell result:', result);
-      if (result?.status === 'FAILURE') {
-        setError(result.errorMessage || 'Something went wrong. No money has been taken from your account. Please try again.');
+      // Docs: only continue on an explicit SUCCESS. PENDING must not proceed.
+      if (result?.status !== 'SUCCESS') {
+        setError(result?.errorMessage || 'Something went wrong. No money has been taken from your account. Please try again.');
         setLoading(false);
         return;
       }
