@@ -411,6 +411,16 @@ def create_checkout():
                 customer_obj["savePaymentMethod"] = True
             payload["customer"] = customer_obj
 
+    # Raw session override — lets the Client Mock page send a hand-edited
+    # checkout-session body verbatim, so a client's exact request shape can be
+    # reproduced without a code change. paymentInitiatorId is injected only if
+    # omitted, matching the proceed override.
+    raw_session = frontend_data.get("rawSession")
+    if isinstance(raw_session, dict):
+        payload = dict(raw_session)
+        payload.setdefault("paymentInitiatorId", cfg['initiator_id'])
+        print(f"[checkout-sessions] RAW session override: {payload}")
+
     try:
         print(f"--- Step 1: Requesting session from {cfg['base_url']} ---")
         print(f"[checkout-sessions] Payload being sent: {payload}")

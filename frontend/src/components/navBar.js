@@ -177,6 +177,15 @@ const NavBar = () => {
               >
                 BNPL Popup
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/client-mock"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                🧪 Client Mock
+              </Link>
             </div>
           )}
         </div>
