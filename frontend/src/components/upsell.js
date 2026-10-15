@@ -286,6 +286,30 @@ const UpsellCheckout = () => {
     }
   };
 
+  // ── Custom wallet buttons: triggerApplePay / triggerGooglePay ────────────
+  // Resolving only means the wallet sheet opened. The payment result arrives
+  // via registerWalletsHandler, which runs /proceed with preferNativeActions.
+  const handleTriggerWallet = async (wallet) => {
+    setError('');
+    const el = document.getElementById('flow-single-checkout');
+    if (!el) return;
+    const method = wallet === 'APPLE' ? 'triggerApplePay' : 'triggerGooglePay';
+    if (typeof el[method] !== 'function') {
+      setError(`${method}() is not available on the component yet.`);
+      return;
+    }
+    try {
+      console.log(`[SaveCard] calling ${method}()`);
+      await el[method]();
+      console.log(`[SaveCard] ${method}() resolved — sheet opened`);
+    } catch (err) {
+      // e.g. "registerWalletsHandler() must be called before triggering..."
+      // or "Apple Pay / Google Pay is not available for this checkout."
+      console.error(`[SaveCard] ${method}() failed:`, err);
+      setError(err?.message || `${method}() failed.`);
+    }
+  };
+
   // ── handleSaveCardPlaceOrder: super-single-checkout el.submit then /proceed
   const handleSaveCardPlaceOrder = async () => {
     setLoading(true);
@@ -294,8 +318,9 @@ const UpsellCheckout = () => {
       const el = document.getElementById('flow-single-checkout');
       const result = await el.submit({ amount: checkoutAmount });
       console.log('[SaveCard] submit result:', result);
-      if (result?.status === 'FAILURE') {
-        setError(result.errorMessage || 'Payment failed. Please try again.');
+      // Docs: only continue on an explicit SUCCESS. PENDING must not proceed.
+      if (result?.status !== 'SUCCESS') {
+        setError(result?.errorMessage || 'Payment failed. Please try again.');
         setLoading(false);
         return;
       }
@@ -595,6 +620,41 @@ const UpsellCheckout = () => {
             >
               {loading ? 'Processing...' : `Place Order — ${PRODUCT.priceDisplay}`}
             </button>
+          )}
+
+          {isSingleSdkReady && (
+            <div style={{ marginTop: '20px', paddingTop: '18px', borderTop: '1px solid #e0e0e0' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '4px' }}>Custom wallet buttons</div>
+              <p style={{ fontSize: '12px', color: '#666', margin: '0 0 10px' }}>
+                Your own buttons calling <code>triggerApplePay()</code> / <code>triggerGooglePay()</code>
+                {' '}on the component, instead of the SDK-rendered ones. The result arrives via the
+                wallets handler, which proceeds with <code>preferNativeActions: true</code> (no redirect).
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => handleTriggerWallet('APPLE')}
+                  disabled={loading}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '8px', border: 'none',
+                    backgroundColor: '#000', color: '#fff', fontSize: '14px', fontWeight: '600',
+                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1,
+                  }}
+                >
+                  🍎 Apple Pay
+                </button>
+                <button
+                  onClick={() => handleTriggerWallet('GOOGLE')}
+                  disabled={loading}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ddd',
+                    backgroundColor: '#fff', color: '#333', fontSize: '14px', fontWeight: '600',
+                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1,
+                  }}
+                >
+                  🔵 Google Pay
+                </button>
+              </div>
+            </div>
           )}
 
           {error && <p style={{ color: 'red', marginTop: '12px', fontSize: '14px' }}>{error}</p>}
