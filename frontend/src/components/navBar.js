@@ -186,6 +186,15 @@ const NavBar = () => {
               >
                 🧪 Client Mock
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/customisation"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                🎨 Customisation
+              </Link>
             </div>
           )}
         </div>
