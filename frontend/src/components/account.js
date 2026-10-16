@@ -709,7 +709,9 @@ const AccountPage = () => {
           </div>
           <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#666' }}>
             Pick a customer by the payment methods they have saved. Selecting one sets it
-            as the active customer for every flow.
+            as the active customer for every flow. This list is always read on
+            <code> 2026-08-01</code> — <code>2026-04-01</code> omits the card object
+            entirely, so brand, last 4 and wallet type would all be unavailable.
           </p>
 
           {custListError && (
@@ -789,10 +791,18 @@ const AccountPage = () => {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '6px' }}>
                             {pms.map(pm => {
                               const card = pm.card || {};
-                              const wallet = card.walletType
-                                || (/applepay|apple_pay/i.test(card.brand || '') ? 'apple_pay' : null)
-                                || (/googlepay|google_pay/i.test(card.brand || '') ? 'google_pay' : null);
+                              // Google Pay reports walletType; Apple Pay instead
+                              // encodes it in the brand, e.g. "visa_applepay".
+                              const wallet = (/apple/i.test(card.walletType || '') || /applepay|apple_pay/i.test(card.brand || ''))
+                                ? 'apple_pay'
+                                : (/google/i.test(card.walletType || '') || /googlepay|google_pay/i.test(card.brand || ''))
+                                  ? 'google_pay'
+                                  : null;
                               const walletIcon = wallet === 'apple_pay' ? '🍎' : wallet === 'google_pay' ? '🔵' : null;
+                              const walletLabel = wallet === 'apple_pay' ? 'Apple Pay' : wallet === 'google_pay' ? 'Google Pay' : null;
+                              // Strip the wallet suffix so the underlying scheme reads cleanly.
+                              const baseBrand = (card.brand || '')
+                                .replace(/[_-]?(applepay|apple_pay|googlepay|google_pay)/ig, '') || pm.type;
                               const enabled = pm.status === 'ENABLED';
                               return (
                                 <span
@@ -807,8 +817,9 @@ const AccountPage = () => {
                                   }}
                                 >
                                   {walletIcon ? `${walletIcon} ` : ''}
-                                  {card.brand || pm.type}
+                                  {baseBrand}
                                   {card.last4 ? ` ••${card.last4}` : ''}
+                                  {walletLabel ? ` · ${walletLabel}` : ''}
                                   {enabled ? '' : ` · ${pm.status}`}
                                 </span>
                               );

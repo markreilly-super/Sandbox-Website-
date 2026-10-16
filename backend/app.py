@@ -69,6 +69,13 @@ current_api_version = '2026-04-01'
 
 API_VERSIONS = ['2026-04-01', '2026-08-01']
 
+# The customer list is read to pick a customer, not to reproduce a client's
+# version-specific behaviour. 2026-04-01 omits the whole `card` object from
+# each payment method (brand, last4 and walletType all absent), so pin the
+# listing to 2026-08-01 and keep wallet detection working regardless of the
+# version selected for the payment flows.
+CUSTOMER_LIST_API_VERSION = '2026-08-01'
+
 # ── Stripe config ─────────────────────────────────────────────────────────────
 # Set STRIPE_SECRET_KEY in backend/.env (gitignored) or your shell environment
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
@@ -528,7 +535,10 @@ def list_customers():
     headers = {'Authorization': cfg['api_key'], 'Content-Type': 'application/json'}
     page = request.args.get('page', '1')
     try:
-        url = f"{cfg['base_url']}/customers?page={page}"
+        # Built from the un-versioned base so the global version toggle does
+        # not strip the card details this view depends on.
+        base = CREDENTIALS[current_env].get('base_url') or ''
+        url = f"{base}/{CUSTOMER_LIST_API_VERSION}/customers?page={page}"
         print(f"--- Listing customers: {url} ---")
         response = api_request('GET', url, headers)
         return jsonify(response.json()), response.status_code
