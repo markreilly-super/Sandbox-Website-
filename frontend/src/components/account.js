@@ -69,6 +69,7 @@ const AccountPage = () => {
   const [custListLoading, setCustListLoading] = useState(false);
   const [custListError, setCustListError] = useState('');
   const [custFilter, setCustFilter] = useState('ALL');
+  const [custShowAll, setCustShowAll] = useState(false);
   const [custSearch, setCustSearch] = useState('');
 
   const [creditPopup, setCreditPopup] = useState(() => {
@@ -192,6 +193,7 @@ const AccountPage = () => {
         return;
       }
       setCustList(data.items);
+      setCustShowAll(false);
       setCustPageInfo(data.pageInfo || null);
       setCustPage(page);
     } catch (err) {
@@ -201,10 +203,37 @@ const AccountPage = () => {
     }
   };
 
+  // Reset the cap when the view changes, so a new filter starts at the top 5.
+  const changeCustFilter = (next) => {
+    setCustFilter(next);
+    setCustShowAll(false);
+  };
+
   const selectCustomer = (id) => {
     localStorage.setItem(`super_customer_id_${environment}`, id);
     setCustomerId(id);
   };
+
+  // ── Customer list: filter, then show the top 5 so the panel stays usable ──
+  const CUSTOMER_PREVIEW_LIMIT = 5;
+  const isWalletPaymentMethod = (pm) => {
+    const card = pm.card || {};
+    // Google Pay sets walletType; Apple Pay arrives as brand "visa_applepay"
+    // with a null walletType, so both have to be checked.
+    return !!card.walletType || /applepay|googlepay|apple_pay|google_pay/i.test(card.brand || '');
+  };
+  const filteredCustomers = custList.filter(cu => {
+    const pms = cu.paymentMethods || [];
+    if (custFilter === 'ENABLED' && !pms.some(pm => pm.type === 'CARD' && pm.status === 'ENABLED')) return false;
+    if (custFilter === 'WALLET' && !pms.some(isWalletPaymentMethod)) return false;
+    if (custFilter === 'NONE' && pms.length > 0) return false;
+    const q = custSearch.trim().toLowerCase();
+    if (q && !`${cu.id} ${cu.externalReference || ''}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const visibleCustomers = custShowAll
+    ? filteredCustomers
+    : filteredCustomers.slice(0, CUSTOMER_PREVIEW_LIMIT);
 
   const handleCreditPopupChange = (enabled) => {
     localStorage.setItem('super_credit_popup', String(enabled));
@@ -698,7 +727,7 @@ const AccountPage = () => {
                 ].map(o => (
                   <button
                     key={o.k}
-                    onClick={() => setCustFilter(o.k)}
+                    onClick={() => changeCustFilter(o.k)}
                     style={{
                       padding: '5px 11px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
                       border: '1px solid', borderColor: custFilter === o.k ? '#000' : '#ddd',
@@ -712,26 +741,13 @@ const AccountPage = () => {
                 <input
                   placeholder="Search id / reference"
                   value={custSearch}
-                  onChange={e => setCustSearch(e.target.value)}
+                  onChange={e => { setCustSearch(e.target.value); setCustShowAll(false); }}
                   style={{ flex: 1, minWidth: '160px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px' }}
                 />
               </div>
 
               <div style={{ maxHeight: '340px', overflowY: 'auto', border: '1px solid #e8e8e8', borderRadius: '8px', backgroundColor: '#fff' }}>
-                {custList
-                  .filter(cu => {
-                    const pms = cu.paymentMethods || [];
-                    const isWallet = pm => {
-                      const card = pm.card || {};
-                      return !!card.walletType || /applepay|googlepay|apple_pay|google_pay/i.test(card.brand || '');
-                    };
-                    if (custFilter === 'ENABLED' && !pms.some(pm => pm.type === 'CARD' && pm.status === 'ENABLED')) return false;
-                    if (custFilter === 'WALLET' && !pms.some(isWallet)) return false;
-                    if (custFilter === 'NONE' && pms.length > 0) return false;
-                    const q = custSearch.trim().toLowerCase();
-                    if (q && !`${cu.id} ${cu.externalReference || ''}`.toLowerCase().includes(q)) return false;
-                    return true;
-                  })
+                {visibleCustomers
                   .map(cu => {
                     const pms = cu.paymentMethods || [];
                     const active = cu.id === customerId;
@@ -802,6 +818,24 @@ const AccountPage = () => {
                       </div>
                     );
                   })}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                <span style={{ flex: 1 }}>
+                  {filteredCustomers.length === 0
+                    ? 'No customers match this filter on the current page.'
+                    : custShowAll
+                      ? `Showing all ${filteredCustomers.length} matches on this page`
+                      : `Showing ${visibleCustomers.length} of ${filteredCustomers.length} matches on this page`}
+                </span>
+                {filteredCustomers.length > CUSTOMER_PREVIEW_LIMIT && (
+                  <button
+                    onClick={() => setCustShowAll(v => !v)}
+                    style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff', cursor: 'pointer', fontSize: '12px' }}
+                  >
+                    {custShowAll ? `Show top ${CUSTOMER_PREVIEW_LIMIT}` : `Show all ${filteredCustomers.length}`}
+                  </button>
+                )}
               </div>
 
               {custPageInfo && (
