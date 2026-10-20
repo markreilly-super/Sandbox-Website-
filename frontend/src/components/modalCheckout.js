@@ -2,10 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
-// Replicates the Bootstrap modal used by a live merchant (anyvan.com), whose
-// computed styles were .modal-dialog { transform: matrix(1,0,0,1,0,8.5725) }
-// and .modal-content { overflow: hidden }. Both break the SDK in ways that
-// only show up on the BNPL / overlay paths, so they are toggleable here.
+// Demo page styled to approximate a merchant's own checkout, so the embedded
+// component can be shown in something close to its real surroundings.
+// The modal reproduces their Bootstrap CSS: a transform on the dialog and
+// overflow:hidden on the content. Both are toggleable under Diagnostics.
+const BRAND = {
+  blue: '#1b9bd8',
+  pink: '#e6007e',
+  text: '#2c3e50',
+  border: '#e3e8ee',
+  muted: '#7b8794',
+};
+
 const ModalCheckout = () => {
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
@@ -15,15 +23,16 @@ const ModalCheckout = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [log, setLog] = useState([]);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  // Hides the sandbox nav so the page reads as the merchant's own checkout.
+  const [demoMode, setDemoMode] = useState(true);
 
-  // Modal CSS knobs — these are the things that actually break the component
+  // Modal CSS knobs — the properties that actually affect the component
   const [useTransform, setUseTransform] = useState(true);
   const [clipOverflow, setClipOverflow] = useState(true);
   const [backdropFilter, setBackdropFilter] = useState(false);
   const [unmountOnClose, setUnmountOnClose] = useState(true);
 
-  // Set on the Account Settings page (localStorage: super_credit_popup).
-  // Read once on mount, so change it there and reload this page.
   const [supportCreditPopup] = useState(
     () => localStorage.getItem('super_credit_popup') !== 'false'
   );
@@ -51,8 +60,7 @@ const ModalCheckout = () => {
     })();
   }, []);
 
-  // ── Readiness + handlers. Methods attach ~1s after the element exists, so
-  //    poll for the method rather than trusting querySelector.
+  // Methods attach ~1s after the element exists, so poll for the method.
   useEffect(() => {
     if (!open || !sessionToken) return;
     setSdkReady(false);
@@ -79,8 +87,8 @@ const ModalCheckout = () => {
       clearInterval(interval);
       if (walletsRegistered.current) {
         walletsRegistered.current = false;
-        // Without this, closing and reopening stacks a duplicate window
-        // listener and each one fires its own /proceed.
+        // Without this, reopening stacks a duplicate window listener and each
+        // one fires its own /proceed.
         try {
           window.superCheckout?.unregisterWalletHandler?.();
           addLog('wallets handler unregistered');
@@ -92,7 +100,7 @@ const ModalCheckout = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, sessionToken]);
 
-  // ── Measure the SDK's full-screen overlay against the viewport ───────────
+  // Measure the SDK's full-screen overlay against the viewport.
   useEffect(() => {
     if (!open || !sdkReady) { setOverlay(null); return; }
     const tick = setInterval(() => {
@@ -105,17 +113,13 @@ const ModalCheckout = () => {
         });
         return out;
       };
-      const fixed = walk(el.shadowRoot).find(
-        (n) => getComputedStyle(n).position === 'fixed'
-      );
+      const fixed = walk(el.shadowRoot).find((n) => getComputedStyle(n).position === 'fixed');
       if (!fixed) { setOverlay({ found: false }); return; }
       const r = fixed.getBoundingClientRect();
       setOverlay({
         found: true,
-        w: Math.round(r.width),
-        h: Math.round(r.height),
-        vw: window.innerWidth,
-        vh: window.innerHeight,
+        w: Math.round(r.width), h: Math.round(r.height),
+        vw: window.innerWidth, vh: window.innerHeight,
         ok: Math.round(r.width) >= window.innerWidth - 2 &&
             Math.round(r.height) >= window.innerHeight - 2,
       });
@@ -144,7 +148,6 @@ const ModalCheckout = () => {
     setLoading(true);
     setErrorMessage('');
     try {
-      const el = document.querySelector('super-checkout');
       const result = await window.superCheckout.submit({
         customerInformation: {
           firstName: 'Test', lastName: 'User',
@@ -157,7 +160,6 @@ const ModalCheckout = () => {
         return;
       }
       await sendProceed();
-      if (el) { /* keep reference for parity with other pages */ }
     } catch (err) {
       addLog(`error: ${err.message}`);
       setErrorMessage(err.message);
@@ -166,117 +168,223 @@ const ModalCheckout = () => {
     }
   };
 
-  const warnings = [];
-  if (useTransform) warnings.push('transform on .modal-dialog creates a containing block — the SDK full-screen overlay will be clipped to the modal');
-  if (clipOverflow) warnings.push('overflow: hidden on .modal-content clips BNPL content instead of scrolling');
-  if (backdropFilter) warnings.push('backdrop-filter also creates a containing block — same effect as transform');
-  if (unmountOnClose) warnings.push('unmounting on close relies on unregisterWalletHandler running, or wallet handlers stack');
+  // ── Presentational bits ──────────────────────────────────────────────────
+  const card = {
+    background: '#fff', border: `1px solid ${BRAND.border}`,
+    borderRadius: '8px', padding: '24px', marginBottom: '18px',
+  };
+  const field = {
+    width: '100%', boxSizing: 'border-box', padding: '12px 14px',
+    border: `1px solid ${BRAND.border}`, borderRadius: '6px',
+    fontSize: '14px', color: BRAND.text, background: '#fff',
+  };
+  const fieldLabel = { fontSize: '11px', color: BRAND.muted, marginBottom: '4px', display: 'block' };
+  const tick = <span style={{ color: '#27ae60', marginLeft: '-26px' }}>✓</span>;
+
+  const row = (label, value, span) => (
+    <div style={{ gridColumn: span ? 'span 2' : 'auto', marginBottom: '14px' }}>
+      <label style={fieldLabel}>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <input style={field} defaultValue={value} readOnly />
+        {tick}
+      </div>
+    </div>
+  );
+
+  const summaryRow = (label, value, editable) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: `1px solid ${BRAND.border}` }}>
+      <div>
+        <div style={{ fontSize: '11px', color: BRAND.muted }}>{label}</div>
+        <div style={{ fontSize: '14px', color: BRAND.text, fontWeight: 500 }}>{value}</div>
+      </div>
+      {editable && <span style={{ fontSize: '12px', color: BRAND.blue, cursor: 'pointer' }}>edit ✎</span>}
+    </div>
+  );
 
   const toggle = (label, value, setter, note) => (
     <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '13px', marginBottom: '8px' }}>
       <input type="checkbox" checked={value} onChange={(e) => setter(e.target.checked)} style={{ marginTop: '3px' }} />
-      <span><code>{label}</code><br /><span style={{ color: '#666', fontSize: '12px' }}>{note}</span></span>
+      <span><code>{label}</code><br /><span style={{ color: BRAND.muted, fontSize: '12px' }}>{note}</span></span>
     </label>
   );
 
   return (
-    <div className="layout-page">
-      <h1 style={{ fontSize: '1.8rem', marginBottom: '6px' }}>Checkout in a Modal</h1>
-      <p style={{ color: '#666', fontSize: '14px', marginBottom: '22px', maxWidth: '760px' }}>
-        Reproduces the Bootstrap modal used by a live merchant. Toggle each property
-        and watch the overlay measurement — it shows whether the SDK's full-screen
-        overlay still covers the viewport or has been trapped inside the modal.
-      </p>
+    <div style={{ background: '#f4f6f8', minHeight: '100vh', margin: '-20px', paddingBottom: '40px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      {demoMode && <style>{'nav { display: none !important; }'}</style>}
 
-      <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 340px', minWidth: '300px' }}>
-          <h3 style={{ fontSize: '15px', marginBottom: '10px' }}>Modal CSS</h3>
-          {toggle('.modal-dialog { transform }', useTransform, setUseTransform, 'as the merchant has it — Bootstrap .fade residue')}
-          {toggle('.modal-content { overflow: hidden }', clipOverflow, setClipOverflow, 'as the merchant has it')}
-          {toggle('.modal { backdrop-filter: blur() }', backdropFilter, setBackdropFilter, 'common styling choice, same breakage')}
-          {toggle('unmount component on close', unmountOnClose, setUnmountOnClose, 'off = keep mounted and hide instead')}
+      {/* Small escape hatch — the sandbox nav is hidden in demo mode */}
+      <button
+        onClick={() => setDemoMode((v) => !v)}
+        title={demoMode ? 'Show the sandbox nav' : 'Hide the sandbox nav'}
+        style={{
+          position: 'fixed', bottom: '14px', left: '14px', zIndex: 2000,
+          padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(0,0,0,.15)',
+          background: 'rgba(255,255,255,.92)', color: BRAND.muted, fontSize: '11px',
+          cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+        }}
+      >
+        {demoMode ? '◂ sandbox' : '▸ demo mode'}
+      </button>
 
-          <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
-            <code>support-credit-popup</code> is <strong>{String(supportCreditPopup)}</strong>
-            {' '}(from Account Settings).{' '}
-            {supportCreditPopup
-              ? 'BNPL opens in a window popup, so overflow clipping will not show.'
-              : 'BNPL expands inline, so overflow clipping is testable.'}
-          </p>
+      {/* Brand header */}
+      <div style={{ background: BRAND.blue, padding: '14px 32px', display: 'flex', alignItems: 'center', gap: '28px' }}>
+        <span style={{ color: '#fff', fontWeight: 800, fontSize: '20px', letterSpacing: '0.5px' }}>MERCHANT</span>
+        {['How it works', "What's Included", 'Why Trust Us?'].map((t) => (
+          <span key={t} style={{ color: '#fff', fontSize: '13px', opacity: 0.95 }}>{t}</span>
+        ))}
+        <span style={{ marginLeft: 'auto', color: '#fff', fontSize: '13px' }}>Log in</span>
+      </div>
 
-          <button
-            onClick={() => { setOpen(true); setErrorMessage(''); addLog('modal opened'); }}
-            disabled={!sessionToken}
-            style={{
-              marginTop: '12px', padding: '12px 20px', border: 'none', borderRadius: '8px',
-              backgroundColor: '#1976d2', color: '#fff', fontWeight: '600',
-              cursor: sessionToken ? 'pointer' : 'not-allowed', opacity: sessionToken ? 1 : 0.5,
-            }}
-          >
-            Open payment modal
-          </button>
-          {sessionError && <p style={{ color: '#e74c3c', fontSize: '13px' }}>{sessionError}</p>}
-
-          {warnings.length > 0 && (
-            <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#fff8e1', border: '1px solid #ffc107', fontSize: '12px' }}>
-              {warnings.map((w, i) => <div key={i} style={{ marginBottom: '4px' }}>⚠️ {w}</div>)}
-            </div>
-          )}
+      <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '28px 32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+          <h1 style={{ fontSize: '26px', color: BRAND.text, margin: 0 }}>Confirm your details</h1>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '12px', color: BRAND.muted }}>Quote ref: 30856214</div>
+            <div style={{ fontSize: '22px', color: BRAND.blue, fontWeight: 700 }}>020 8629 5264</div>
+          </div>
         </div>
 
-        <div style={{ flex: '1 1 340px', minWidth: '300px' }}>
-          <h3 style={{ fontSize: '15px', marginBottom: '10px' }}>Overlay measurement</h3>
-          {!open || !overlay ? (
-            <p style={{ fontSize: '13px', color: '#999' }}>Open the modal to measure.</p>
-          ) : !overlay.found ? (
-            <p style={{ fontSize: '13px', color: '#999' }}>No fixed overlay rendered yet.</p>
-          ) : (
-            <div style={{
-              padding: '12px', borderRadius: '8px', fontSize: '13px',
-              border: '1px solid', borderColor: overlay.ok ? '#4CAF50' : '#e74c3c',
-              backgroundColor: overlay.ok ? '#f1f8f2' : '#fdf3f2',
-            }}>
-              <div><strong>{overlay.ok ? '✅ Covers the viewport' : '❌ Clipped to the modal'}</strong></div>
-              <div style={{ fontFamily: 'monospace', marginTop: '6px' }}>
-                overlay {overlay.w} × {overlay.h}<br />
-                viewport {overlay.vw} × {overlay.vh}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          {/* Left: booking form */}
+          <div style={{ flex: '1 1 580px', minWidth: '320px' }}>
+            <div style={card}>
+              <h2 style={{ fontSize: '18px', color: BRAND.text, marginTop: 0 }}>Your Booking Details</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                {row('First and Last Name', 'Test User', true)}
+                {row('Email Address', 'customer@example.com')}
+                {row('Phone Number', '07700900000')}
               </div>
             </div>
-          )}
 
-          {log.length > 0 && (
-            <pre style={{
-              marginTop: '14px', padding: '10px', borderRadius: '8px',
-              backgroundColor: '#1e1e1e', color: '#d4d4d4', fontSize: '11px',
-              maxHeight: '220px', overflowY: 'auto', whiteSpace: 'pre-wrap',
-            }}>{log.join('\n')}</pre>
+            <div style={card}>
+              <h2 style={{ fontSize: '18px', color: BRAND.text, marginTop: 0 }}>Pickup Details</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                {row('Postcode', 'TW8 0BE')}
+                {row('Address', 'Please Select Address (TW8 0BE)')}
+              </div>
+            </div>
+
+            <div style={card}>
+              <h2 style={{ fontSize: '18px', color: BRAND.text, marginTop: 0 }}>Delivery Details</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                {row('Postcode', 'TW8 0BE')}
+                {row('Contact Name at Delivery', 'Test User')}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button style={{ padding: '14px 26px', border: `1px solid ${BRAND.border}`, background: '#fff', borderRadius: '6px', color: BRAND.muted, fontSize: '15px', cursor: 'pointer' }}>
+                ‹ Back
+              </button>
+              <button
+                onClick={() => { setOpen(true); setErrorMessage(''); addLog('payment modal opened'); }}
+                disabled={!sessionToken}
+                style={{
+                  marginLeft: 'auto', padding: '15px 34px', border: 'none', borderRadius: '6px',
+                  background: BRAND.pink, color: '#fff', fontSize: '16px', fontWeight: 700,
+                  cursor: sessionToken ? 'pointer' : 'not-allowed', opacity: sessionToken ? 1 : 0.5,
+                }}
+              >
+                Next Step ›
+              </button>
+            </div>
+            {sessionError && <p style={{ color: '#e74c3c', fontSize: '13px' }}>{sessionError}</p>}
+          </div>
+
+          {/* Right: order summary */}
+          <div style={{ flex: '0 1 320px', minWidth: '280px' }}>
+            <div style={card}>
+              <div style={{ background: '#ece7e1', borderRadius: '6px', height: '120px', marginBottom: '12px' }} />
+              {summaryRow('Your Reference', '30856214')}
+              {summaryRow('Car Type', 'Ariel Atom', true)}
+              {summaryRow('Pickup', 'Mon 26 Oct', true)}
+              {summaryRow('Locations', 'TW8 to TW8', true)}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px' }}>
+                <span style={{ fontSize: '16px', color: BRAND.text }}>Total Price</span>
+                <span style={{ fontSize: '22px', color: BRAND.blue, fontWeight: 700 }}>£58.00</span>
+              </div>
+            </div>
+            <p style={{ fontSize: '11px', color: BRAND.muted, textAlign: 'center' }}>
+              By proceeding, you agree with our Terms of Use.
+            </p>
+          </div>
+        </div>
+
+        {/* Diagnostics — collapsed so it stays out of the way during a demo */}
+        <div style={{ marginTop: '30px' }}>
+          <button
+            onClick={() => setShowDiagnostics((v) => !v)}
+            style={{ background: 'none', border: 'none', color: BRAND.muted, fontSize: '12px', cursor: 'pointer', padding: 0 }}
+          >
+            {showDiagnostics ? '▾' : '▸'} Diagnostics
+          </button>
+
+          {showDiagnostics && (
+            <div style={{ ...card, marginTop: '10px', display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 320px' }}>
+                <h3 style={{ fontSize: '14px', marginTop: 0 }}>Modal CSS</h3>
+                {toggle('.modal-dialog { transform }', useTransform, setUseTransform, "as the merchant has it — Bootstrap .fade residue")}
+                {toggle('.modal-content { overflow: hidden }', clipOverflow, setClipOverflow, 'as the merchant has it')}
+                {toggle('.modal { backdrop-filter: blur() }', backdropFilter, setBackdropFilter, 'same containing-block effect as transform')}
+                {toggle('unmount component on close', unmountOnClose, setUnmountOnClose, 'off = keep mounted and hide instead')}
+                <p style={{ fontSize: '12px', color: BRAND.muted }}>
+                  <code>support-credit-popup</code> is <strong>{String(supportCreditPopup)}</strong> (Account Settings).
+                </p>
+              </div>
+              <div style={{ flex: '1 1 320px' }}>
+                <h3 style={{ fontSize: '14px', marginTop: 0 }}>SDK overlay vs viewport</h3>
+                {!open || !overlay ? (
+                  <p style={{ fontSize: '13px', color: BRAND.muted }}>Open the payment modal to measure.</p>
+                ) : !overlay.found ? (
+                  <p style={{ fontSize: '13px', color: BRAND.muted }}>No fixed overlay rendered yet.</p>
+                ) : (
+                  <div style={{
+                    padding: '12px', borderRadius: '8px', fontSize: '13px',
+                    border: '1px solid', borderColor: overlay.ok ? '#4CAF50' : '#e74c3c',
+                    background: overlay.ok ? '#f1f8f2' : '#fdf3f2',
+                  }}>
+                    <strong>{overlay.ok ? '✅ Covers the viewport' : '❌ Clipped to the modal'}</strong>
+                    <div style={{ fontFamily: 'monospace', marginTop: '6px' }}>
+                      overlay {overlay.w} × {overlay.h}<br />viewport {overlay.vw} × {overlay.vh}
+                    </div>
+                  </div>
+                )}
+                {log.length > 0 && (
+                  <pre style={{
+                    marginTop: '12px', padding: '10px', borderRadius: '8px',
+                    background: '#1e1e1e', color: '#d4d4d4', fontSize: '11px',
+                    maxHeight: '180px', overflowY: 'auto', whiteSpace: 'pre-wrap',
+                  }}>{log.join('\n')}</pre>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ── The modal ─────────────────────────────────────────────────────── */}
+      {/* ── Payment modal ─────────────────────────────────────────────────── */}
       {open && (
         <div
           style={{
             position: 'fixed', inset: 0, overflowY: 'auto', zIndex: 1050,
-            backgroundColor: 'rgba(0,0,0,.5)',
+            background: 'rgba(0,0,0,.5)',
             ...(backdropFilter ? { backdropFilter: 'blur(4px)' } : {}),
           }}
         >
           <div style={{
-            position: 'relative', width: '600px', maxWidth: 'calc(100% - 32px)',
-            margin: '30px auto',
+            position: 'relative', width: '600px', maxWidth: 'calc(100% - 32px)', margin: '30px auto',
             ...(useTransform ? { transform: 'matrix(1, 0, 0, 1, 0, 8.5725)' } : {}),
           }}>
             <div style={{
-              position: 'relative', backgroundColor: '#fff', borderRadius: '8px', padding: '20px',
+              position: 'relative', background: '#fff', borderRadius: '8px', padding: '24px',
               overflow: clipOverflow ? 'hidden' : 'visible',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '14px' }}>
-                <h2 style={{ fontSize: '1.2rem', margin: 0, flex: 1 }}>Enter your payment details</h2>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '18px' }}>
+                <span style={{ fontSize: '20px', marginRight: '10px' }}>💳</span>
+                <h2 style={{ fontSize: '19px', margin: 0, flex: 1, color: BRAND.text }}>Enter your payment details</h2>
                 <button
-                  onClick={() => { setOpen(false); addLog('modal closed'); }}
-                  style={{ border: 'none', background: 'none', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}
+                  onClick={() => { setOpen(false); addLog('payment modal closed'); }}
+                  style={{ border: 'none', background: 'none', fontSize: '24px', cursor: 'pointer', lineHeight: 1, color: BRAND.muted }}
                 >
                   ×
                 </button>
@@ -293,19 +401,31 @@ const ModalCheckout = () => {
                 />
               )}
 
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '18px 0 14px', marginTop: '14px', borderTop: `1px solid ${BRAND.border}`,
+              }}>
+                <span style={{ fontSize: '16px', color: BRAND.text }}>Total price</span>
+                <span style={{ fontSize: '22px', color: BRAND.blue, fontWeight: 700 }}>£58.00</span>
+              </div>
+
               {sdkReady && (
-                <button
-                  onClick={placeOrder}
-                  disabled={loading}
-                  style={{
-                    width: '100%', marginTop: '18px', padding: '15px', border: 'none',
-                    borderRadius: '8px', backgroundColor: '#000', color: '#fff',
-                    fontWeight: 'bold', fontSize: '15px',
-                    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
-                  }}
-                >
-                  {loading ? 'Processing...' : 'Book Now — £58.00'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ fontSize: '11px', color: BRAND.muted, flex: 1 }}>
+                    By clicking Book Now, you agree with our Privacy Policy and Terms of Use.
+                  </span>
+                  <button
+                    onClick={placeOrder}
+                    disabled={loading}
+                    style={{
+                      padding: '14px 32px', border: 'none', borderRadius: '6px',
+                      background: BRAND.pink, color: '#fff', fontWeight: 700, fontSize: '15px',
+                      cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
+                    }}
+                  >
+                    {loading ? 'Processing...' : 'Book Now'}
+                  </button>
+                </div>
               )}
 
               {errorMessage && (
