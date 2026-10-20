@@ -22,6 +22,12 @@ const ModalCheckout = () => {
   const [backdropFilter, setBackdropFilter] = useState(false);
   const [unmountOnClose, setUnmountOnClose] = useState(true);
 
+  // Set on the Account Settings page (localStorage: super_credit_popup).
+  // Read once on mount, so change it there and reload this page.
+  const [supportCreditPopup] = useState(
+    () => localStorage.getItem('super_credit_popup') !== 'false'
+  );
+
   const [overlay, setOverlay] = useState(null);
   const walletsRegistered = useRef(false);
 
@@ -190,6 +196,14 @@ const ModalCheckout = () => {
           {toggle('.modal { backdrop-filter: blur() }', backdropFilter, setBackdropFilter, 'common styling choice, same breakage')}
           {toggle('unmount component on close', unmountOnClose, setUnmountOnClose, 'off = keep mounted and hide instead')}
 
+          <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
+            <code>support-credit-popup</code> is <strong>{String(supportCreditPopup)}</strong>
+            {' '}(from Account Settings).{' '}
+            {supportCreditPopup
+              ? 'BNPL opens in a window popup, so overflow clipping will not show.'
+              : 'BNPL expands inline, so overflow clipping is testable.'}
+          </p>
+
           <button
             onClick={() => { setOpen(true); setErrorMessage(''); addLog('modal opened'); }}
             disabled={!sessionToken}
@@ -275,7 +289,7 @@ const ModalCheckout = () => {
                   currency="GBP"
                   checkout-session-token={sessionToken}
                   support-express-wallets="true"
-                  support-credit-popup="true"
+                  support-credit-popup={String(supportCreditPopup)}
                 />
               )}
 
@@ -311,7 +325,7 @@ const ModalCheckout = () => {
             currency="GBP"
             checkout-session-token={sessionToken}
             support-express-wallets="true"
-            support-credit-popup="true"
+            support-credit-popup={String(supportCreditPopup)}
           />
         </div>
       )}
