@@ -505,11 +505,6 @@ def proceed_checkout(session_id):
     elif upsell_flow:
         payload["preferNativeActions"] = True
 
-    # Generic passthrough so any page can request inline 3DS without needing
-    # its own flow flag.
-    if frontend_data.get("preferNativeActions"):
-        payload["preferNativeActions"] = True
-
     # Raw payload override — lets the Token Checkout page send a hand-edited
     # proceed body verbatim. paymentInitiatorId is injected only if omitted,
     # so the request stays valid without the caller needing to know the ID.

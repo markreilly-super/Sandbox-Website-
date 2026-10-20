@@ -28,10 +28,6 @@ const ModalCheckout = () => {
     () => localStorage.getItem('super_credit_popup') !== 'false'
   );
 
-  // super-single-checkout requires paymentToDisplay — without it the component
-  // throws on validation and its methods never attach.
-  const [paymentToDisplay, setPaymentToDisplay] = useState('CARD');
-
   const [overlay, setOverlay] = useState(null);
   const walletsRegistered = useRef(false);
 
@@ -63,17 +59,17 @@ const ModalCheckout = () => {
     walletsRegistered.current = false;
 
     const interval = setInterval(() => {
-      const el = document.getElementById('modal-single-checkout');
+      const el = document.querySelector('super-checkout');
       if (!el || typeof el.submit !== 'function') return;
       clearInterval(interval);
       setSdkReady(true);
       addLog('component ready');
 
-      if (typeof el.registerWalletsHandler === 'function' && !walletsRegistered.current) {
+      if (window.superCheckout?.registerWalletsHandler && !walletsRegistered.current) {
         walletsRegistered.current = true;
-        el.registerWalletsHandler(async (event) => {
+        window.superCheckout.registerWalletsHandler(async (event) => {
           addLog(`wallets handler fired (${event?.detail?.type ?? 'unknown'})`);
-          await sendProceed(el);
+          await sendProceed();
         });
         addLog('wallets handler registered');
       }
@@ -86,7 +82,7 @@ const ModalCheckout = () => {
         // Without this, closing and reopening stacks a duplicate window
         // listener and each one fires its own /proceed.
         try {
-          document.getElementById('modal-single-checkout')?.unregisterWalletHandler?.();
+          window.superCheckout?.unregisterWalletHandler?.();
           addLog('wallets handler unregistered');
         } catch (err) {
           addLog(`unregister failed: ${err.message}`);
@@ -100,7 +96,7 @@ const ModalCheckout = () => {
   useEffect(() => {
     if (!open || !sdkReady) { setOverlay(null); return; }
     const tick = setInterval(() => {
-      const el = document.getElementById('modal-single-checkout');
+      const el = document.querySelector('super-checkout');
       if (!el?.shadowRoot) return;
       const walk = (root, out = []) => {
         root.querySelectorAll('*').forEach((n) => {
@@ -127,7 +123,7 @@ const ModalCheckout = () => {
     return () => clearInterval(tick);
   }, [open, sdkReady]);
 
-  const sendProceed = async (el) => {
+  const sendProceed = async () => {
     const res = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -136,23 +132,10 @@ const ModalCheckout = () => {
         email: 'customer@example.com',
         phone: '07700900000',
         externalReference: `MODAL_ORDER_${Date.now()}`,
-        // Keeps 3DS inline instead of redirecting, so the challenge renders
-        // as a fixed overlay inside the modal — the case under test.
-        preferNativeActions: true,
       }),
     });
     const data = await res.json();
     addLog(`proceed → HTTP ${res.status}`);
-
-    if (data.nativeNextAction) {
-      addLog('nativeNextAction returned — resolving inline (watch the overlay)');
-      const target = el || document.getElementById('modal-single-checkout');
-      const result = await target.handleNextAction(data.nativeNextAction);
-      addLog(`handleNextAction → ${result?.status}`);
-      if (result?.status === 'SUCCESS') { window.location.href = result.redirectUrl; return; }
-      setErrorMessage(result?.errorMessage || 'Payment failed during 3DS.');
-      return;
-    }
     if (data.redirectUrl) { window.location.href = data.redirectUrl; return; }
     setErrorMessage(data.detail || data.error || `Proceed failed (HTTP ${res.status})`);
   };
@@ -161,14 +144,20 @@ const ModalCheckout = () => {
     setLoading(true);
     setErrorMessage('');
     try {
-      const el = document.getElementById('modal-single-checkout');
-      const result = await el.submit({ amount: 5800 });
+      const el = document.querySelector('super-checkout');
+      const result = await window.superCheckout.submit({
+        customerInformation: {
+          firstName: 'Test', lastName: 'User',
+          email: 'customer@example.com', phoneNumber: '07700900000',
+        },
+      });
       addLog(`submit() → ${result?.status}`);
       if (result?.status !== 'SUCCESS') {
         setErrorMessage(result?.errorMessage || 'Payment failed');
         return;
       }
-      await sendProceed(el);
+      await sendProceed();
+      if (el) { /* keep reference for parity with other pages */ }
     } catch (err) {
       addLog(`error: ${err.message}`);
       setErrorMessage(err.message);
@@ -194,7 +183,7 @@ const ModalCheckout = () => {
     <div className="layout-page">
       <h1 style={{ fontSize: '1.8rem', marginBottom: '6px' }}>Checkout in a Modal</h1>
       <p style={{ color: '#666', fontSize: '14px', marginBottom: '22px', maxWidth: '760px' }}>
-        Reproduces the Bootstrap modal used by a live merchant, using super-single-checkout with preferNativeActions so 3DS stays inline. Toggle each property
+        Reproduces the Bootstrap modal used by a live merchant. Toggle each property
         and watch the overlay measurement — it shows whether the SDK's full-screen
         overlay still covers the viewport or has been trapped inside the modal.
       </p>
@@ -206,29 +195,6 @@ const ModalCheckout = () => {
           {toggle('.modal-content { overflow: hidden }', clipOverflow, setClipOverflow, 'as the merchant has it')}
           {toggle('.modal { backdrop-filter: blur() }', backdropFilter, setBackdropFilter, 'common styling choice, same breakage')}
           {toggle('unmount component on close', unmountOnClose, setUnmountOnClose, 'off = keep mounted and hide instead')}
-
-          <label style={{ display: 'block', fontSize: '13px', marginTop: '10px' }}>
-            <code>payment-to-display</code>{' '}
-            <select
-              value={paymentToDisplay}
-              onChange={(e) => setPaymentToDisplay(e.target.value)}
-              style={{ marginLeft: '6px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '12px' }}
-            >
-              {['CARD', 'BNPL', 'EXPRESS_WALLETS', 'APPLE_PAY', 'GOOGLE_PAY', 'OPEN_BANKING'].map((v) => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
-            <br />
-            <span style={{ color: '#666', fontSize: '12px' }}>
-              Required by this component. Use CARD with a 3DS test card to see the
-              inline challenge render inside the modal.
-            </span>
-          </label>
-
-          <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0' }}>
-            <code>preferNativeActions: true</code> is sent on every proceed from this
-            page, so 3DS stays inline instead of redirecting.
-          </p>
 
           <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0' }}>
             <code>support-credit-popup</code> is <strong>{String(supportCreditPopup)}</strong>
@@ -317,13 +283,12 @@ const ModalCheckout = () => {
               </div>
 
               {sessionToken && (
-                <super-single-checkout
-                  id="modal-single-checkout"
-                  key={`${sessionToken}-${paymentToDisplay}`}
+                <super-checkout
+                  key={sessionToken}
                   amount="5800"
                   currency="GBP"
                   checkout-session-token={sessionToken}
-                  payment-to-display={paymentToDisplay}
+                  support-express-wallets="true"
                   support-credit-popup={String(supportCreditPopup)}
                 />
               )}
@@ -354,13 +319,12 @@ const ModalCheckout = () => {
       {/* Keep-mounted mode: component stays alive but hidden when closed */}
       {!open && !unmountOnClose && sessionToken && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }} aria-hidden="true">
-          <super-single-checkout
-            id="modal-single-checkout"
-            key={`${sessionToken}-${paymentToDisplay}`}
+          <super-checkout
+            key={sessionToken}
             amount="5800"
             currency="GBP"
             checkout-session-token={sessionToken}
-            payment-to-display={paymentToDisplay}
+            support-express-wallets="true"
             support-credit-popup={String(supportCreditPopup)}
           />
         </div>
