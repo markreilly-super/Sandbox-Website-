@@ -8,6 +8,49 @@ const GLOBAL_EVENTS = {
   DISPLAY_BY_PHONE: 'superpayments:displaySignIn',
 };
 
+// Apple and Google return their own raw contact shapes, so branch on
+// detail.type before reading fields. Apple uses givenName/familyName and an
+// addressLines array; Google uses a single name and address1.
+const normaliseWalletContact = (detail) => {
+  if (!detail || !detail.type) return null;
+  const pick = (addr) => {
+    if (!addr) return null;
+    if (detail.type === 'applepay') {
+      return {
+        firstName: addr.givenName ?? null,
+        lastName: addr.familyName ?? null,
+        addressLine1: Array.isArray(addr.addressLines) ? (addr.addressLines[0] ?? null) : null,
+        addressLine2: Array.isArray(addr.addressLines) ? (addr.addressLines[1] ?? null) : null,
+        city: addr.locality ?? null,
+        county: addr.administrativeArea ?? null,
+        postCode: addr.postalCode ?? null,
+        country: addr.countryCode ?? null,
+        email: addr.emailAddress ?? null,
+        phone: addr.phoneNumber ?? null,
+      };
+    }
+    // googlepay
+    return {
+      firstName: (addr.name || '').split(' ')[0] || null,
+      lastName: (addr.name || '').split(' ').slice(1).join(' ') || null,
+      addressLine1: addr.address1 ?? null,
+      addressLine2: addr.address2 ?? null,
+      city: addr.locality ?? null,
+      county: addr.administrativeArea ?? null,
+      postCode: addr.postalCode ?? null,
+      country: addr.countryCode ?? null,
+      email: addr.emailAddress ?? null,
+      phone: addr.phoneNumber ?? null,
+    };
+  };
+  return {
+    type: detail.type,
+    email: detail.email ?? null,
+    billing: pick(detail.billingAddress),
+    shipping: pick(detail.shippingAddress),
+  };
+};
+
 const CheckoutPage = () => {
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
@@ -111,8 +154,17 @@ const CheckoutPage = () => {
         clearInterval(interval);
 
         window.superCheckout.registerWalletsHandler(async (event) => {
-          const detail = event?.detail ? JSON.parse(JSON.stringify(event.detail)) : null;
-          console.log('[Wallets] payment type:', detail?.type);
+          const detail = event?.detail;
+          // Log the raw object. A JSON round-trip drops keys whose value is
+          // undefined, which is exactly what hid the address fields before.
+          console.log('[Wallets] raw event.detail:', detail);
+          console.log('[Wallets] detail keys:', detail ? Object.keys(detail) : null);
+          console.log('[Wallets] type:', detail?.type);
+          console.log('[Wallets] email:', detail?.email);
+          console.log('[Wallets] billingAddress:', detail?.billingAddress);
+          console.log('[Wallets] shippingAddress:', detail?.shippingAddress);
+          const contact = normaliseWalletContact(detail);
+          console.log('[Wallets] normalised:', contact);
           try {
             const bd = billingDetailsRef.current;
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
@@ -120,8 +172,10 @@ const CheckoutPage = () => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 amount: sdkConfig.amount,
-                email: bd.email,
-                phone: bd.phoneNumber,
+                firstName: contact?.billing?.firstName || bd.firstName,
+                lastName: contact?.billing?.lastName || bd.lastName,
+                email: contact?.email || contact?.billing?.email || bd.email,
+                phone: contact?.billing?.phone || bd.phoneNumber,
                 externalReference: `ORDER_${Date.now()}`,
               }),
             });
