@@ -165,6 +165,10 @@ const CheckoutPage = () => {
           console.log('[Wallets] shippingAddress:', detail?.shippingAddress);
           const contact = normaliseWalletContact(detail);
           console.log('[Wallets] normalised:', contact);
+          // By the time this fires the SDK has already created a paymentIntent
+          // with the wallet token and resolved the wallet sheet. Nothing thrown
+          // or returned here can stop that; only /proceed completes the payment.
+          console.log('[Wallets] handler fired — sheet already resolved; calling /proceed next');
           try {
             const bd = billingDetailsRef.current;
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
@@ -180,9 +184,20 @@ const CheckoutPage = () => {
               }),
             });
             const proceedData = await response.json();
-            if (proceedData.redirectUrl) window.location.href = proceedData.redirectUrl;
+            console.log('[Wallets] proceed HTTP', response.status, proceedData);
+            if (proceedData.redirectUrl) {
+              console.log('[Wallets] redirecting to', proceedData.redirectUrl);
+              window.location.href = proceedData.redirectUrl;
+              return;
+            }
+            // No redirect means the payment was not completed. Surface it —
+            // wallets have no submit()-style { status, errorMessage } result.
+            const msg = proceedData.detail || proceedData.error || `Proceed failed (HTTP ${response.status})`;
+            console.error('[Wallets] no redirectUrl returned:', msg);
+            setErrorMessage(msg);
           } catch (err) {
-            console.error('Wallets handler error:', err);
+            console.error('[Wallets] handler error:', err);
+            setErrorMessage(err?.message || 'Communication error completing the wallet payment.');
           }
         });
         console.log('✅ Wallets handler registered');
