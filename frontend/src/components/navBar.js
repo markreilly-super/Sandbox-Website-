@@ -195,6 +195,15 @@ const NavBar = () => {
               >
                 🎨 Customisation
               </Link>
+              <Link
+                style={dropdownItemStyle}
+                to="/modal-checkout"
+                onClick={() => { setDropdownOpen(false); setMenuOpen(false); }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#3a3a3a'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                🪟 Modal Checkout
+              </Link>
             </div>
           )}
         </div>
