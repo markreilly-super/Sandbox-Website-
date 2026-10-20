@@ -275,6 +275,7 @@ const ModalCheckout = () => {
                   currency="GBP"
                   checkout-session-token={sessionToken}
                   support-express-wallets="true"
+                  support-credit-popup="true"
                 />
               )}
 
@@ -310,6 +311,7 @@ const ModalCheckout = () => {
             currency="GBP"
             checkout-session-token={sessionToken}
             support-express-wallets="true"
+            support-credit-popup="true"
           />
         </div>
       )}
