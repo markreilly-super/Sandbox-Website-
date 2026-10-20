@@ -226,15 +226,6 @@ const ModalCheckout = () => {
         {demoMode ? '◂ sandbox' : '▸ demo mode'}
       </button>
 
-      {/* Brand header */}
-      <div style={{ background: BRAND.blue, padding: '14px 32px', display: 'flex', alignItems: 'center', gap: '28px' }}>
-        <span style={{ color: '#fff', fontWeight: 800, fontSize: '20px', letterSpacing: '0.5px' }}>MERCHANT</span>
-        {['How it works', "What's Included", 'Why Trust Us?'].map((t) => (
-          <span key={t} style={{ color: '#fff', fontSize: '13px', opacity: 0.95 }}>{t}</span>
-        ))}
-        <span style={{ marginLeft: 'auto', color: '#fff', fontSize: '13px' }}>Log in</span>
-      </div>
-
       <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '28px 32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '26px', color: BRAND.text, margin: 0 }}>Confirm your details</h1>
