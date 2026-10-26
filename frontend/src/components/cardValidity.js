@@ -403,8 +403,10 @@ const CardValidityCheckout = () => {
               checkout-session-token={sessionToken}
               title={sdkConfig.title}
               subtitle={sdkConfig.subtitle}
-              payment-methods-order={sdkConfig.paymentMethodsOrder}
-              pre-selected-payment-method={sdkConfig.preSelectedPaymentMethod}
+              {...(sdkConfig.paymentMethodsOrder
+                ? { 'payment-methods-order': sdkConfig.paymentMethodsOrder } : {})}
+              {...(sdkConfig.preSelectedPaymentMethod
+                ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
             />
 
             {isSdkReady && (

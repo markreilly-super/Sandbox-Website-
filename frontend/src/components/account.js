@@ -573,9 +573,18 @@ const AccountPage = () => {
       <div style={{ backgroundColor: '#f9f9f9', padding: '25px', borderRadius: '12px' }}>
         <h2>SDK Settings</h2>
         <label style={labelStyle}>Method Order</label>
-        <input style={inputStyle} value={config.paymentMethodsOrder} onChange={e => setConfig({...config, paymentMethodsOrder: e.target.value})} />
+        <input
+          style={inputStyle}
+          placeholder="leave blank to omit the attribute"
+          value={config.paymentMethodsOrder}
+          onChange={e => setConfig({...config, paymentMethodsOrder: e.target.value})}
+        />
+        <p style={{ margin: '-8px 0 14px', fontSize: '11px', color: '#888' }}>
+          Blank omits <code>payment-methods-order</code> entirely rather than sending an empty value.
+        </p>
         <label style={labelStyle}>Pre-selected Method</label>
         <select style={inputStyle} value={config.preSelectedPaymentMethod} onChange={e => setConfig({...config, preSelectedPaymentMethod: e.target.value})}>
+          <option value="">(none — omit attribute)</option>
           <option value="CARD">CARD</option>
           <option value="BNPL">BNPL</option>
           <option value="OPEN_BANKING">OPEN_BANKING</option>
@@ -594,6 +603,12 @@ const AccountPage = () => {
             onChange={e => setConfig({ ...config, amount: Math.round(parseFloat(e.target.value || 0) * 100) })}
           />
         </div>
+        {!config.preSelectedPaymentMethod && (
+          <p style={{ margin: '0 0 12px', padding: '8px 10px', borderRadius: '6px', backgroundColor: '#fff8e1', border: '1px solid #ffc107', fontSize: '11px' }}>
+            With no pre-selected method, a sole payment method renders unlabelled and
+            without a border — it appears as blank clickable space until clicked.
+          </p>
+        )}
         <button onClick={() => localStorage.setItem('sdk_config', JSON.stringify(config))} style={btnStyle}>Save Settings</button>
 
         <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>API Version</h3>
