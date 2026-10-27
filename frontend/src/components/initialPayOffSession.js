@@ -356,13 +356,6 @@ const InitialPayOffSession = () => {
                 key={sessionToken}
                 amount={String(sdkConfig.amount)}
                 checkout-session-token={sessionToken}
-                title={sdkConfig.title}
-                subtitle={sdkConfig.subtitle}
-                {...(sdkConfig.paymentMethodsOrder
-                  ? { 'payment-methods-order': sdkConfig.paymentMethodsOrder } : {})}
-                {...(sdkConfig.preSelectedPaymentMethod
-                  ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
-                support-express-wallets="true"
               />
               {isSdkReady && (
                 <button
