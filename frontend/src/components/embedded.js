@@ -4,10 +4,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 // TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
-const GLOBAL_EVENTS = {
-  DISPLAY_BY_PHONE: 'superpayments:displaySignIn',
-};
-
 // Apple and Google return their own raw contact shapes, so branch on
 // detail.type before reading fields. Apple uses givenName/familyName and an
 // addressLines array; Google uses a single name and address1.
@@ -81,34 +77,11 @@ const CheckoutPage = () => {
     postcode: 'SW1A 1AA'
   });
 
-  const initialSyncDone = useRef(false);
-
-  // Always holds the latest phone number so the MutationObserver callback
-  // never captures a stale value from its closure
-  const phoneRef = useRef(billingDetails.phoneNumber);
-  useEffect(() => { phoneRef.current = billingDetails.phoneNumber; }, [billingDetails.phoneNumber]);
-
   // Always holds the latest billing details for the wallets handler closure
   const billingDetailsRef = useRef(billingDetails);
   useEffect(() => { billingDetailsRef.current = billingDetails; }, [billingDetails]);
 
-  // Holds the active MutationObserver so we can disconnect it on cleanup
-  const bnplObserverRef = useRef(null);
   const walletsListenerAdded = useRef(false);
-
-  const triggerCustomPhoneNumberEvent = useCallback((phoneNumber) => {
-    const superCheckoutElement = document.querySelector('super-checkout');
-    if (superCheckoutElement && phoneNumber) {
-      const event = new CustomEvent(GLOBAL_EVENTS.DISPLAY_BY_PHONE, {
-        bubbles: true,
-        cancelable: false,
-        composed: true, 
-        detail: { phoneNumber }
-      });
-      document.dispatchEvent(event);
-      console.log('📡 Phone number synced:', phoneNumber);
-    }
-  }, []);
 
   /**
    * REFINED READINESS CHECK
@@ -129,17 +102,12 @@ const CheckoutPage = () => {
       if (ready) {
         console.log('✅ SDK submit method detected. Component is ready.');
         setIsSdkReady(true);
-        // Ensure initial phone sync happens once the SDK is ready
-        if (!initialSyncDone.current) {
-          triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
-          initialSyncDone.current = true;
-        }
         clearInterval(checkInterval);
       }
     }, 500);
 
     return () => clearInterval(checkInterval);
-  }, [triggerCustomPhoneNumberEvent, billingDetails.phoneNumber]);
+  }, []);
 
   // Register Apple Pay / Google Pay express button handler.
   // Must be registered BEFORE <super-checkout> renders so the SDK can show wallet buttons.
@@ -222,123 +190,9 @@ const CheckoutPage = () => {
     };
   }, [checkoutSessionId]);
 
-  /**
-   * BNPL PHONE INJECTION
-   * The marketing/rewards components are in the DOM on page load so the initial
-   * superpayments:displaySignIn event reaches them fine. The BNPL iframe is lazy —
-   * it only mounts when the user clicks "Pay Later". We use a MutationObserver on
-   * the super-checkout shadow root to detect the moment that iframe appears, then
-   * immediately re-fire the phone number event so the BNPL flow pre-populates it.
-   */
-  useEffect(() => {
-    if (!sessionToken) return;
-
-    console.log('🔍 [BNPL Observer] Session active — polling for super-checkout shadow root...');
-
-    let pollInterval;
-
-    const attachObserver = (shadowRoot) => {
-      // Disconnect any previous observer (e.g. after a session refresh)
-      if (bnplObserverRef.current) {
-        bnplObserverRef.current.disconnect();
-        console.log('♻️  [BNPL Observer] Previous observer disconnected before re-attaching');
-      }
-
-      // Helper: directly populate the tel input inside the shadow DOM.
-      // Super Credit is a React app inside the shadow DOM, so we can't just set
-      // .value — we need to use the native HTMLInputElement setter to bypass React's
-      // synthetic event system, then dispatch 'input' to trigger its state update.
-      const fillTelInput = (attempt = 1) => {
-        const telInput = shadowRoot.querySelector('input[type="tel"]');
-        if (telInput) {
-          const nativeSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype, 'value'
-          ).set;
-          nativeSetter.call(telInput, phoneRef.current);
-          telInput.dispatchEvent(new Event('input',  { bubbles: true }));
-          telInput.dispatchEvent(new Event('change', { bubbles: true }));
-          console.log('📱 [BNPL Observer] Tel input populated:', phoneRef.current);
-        } else if (attempt < 5) {
-          // Input may not be in the DOM yet — retry up to 5× every 150 ms
-          console.log(`⏳ [BNPL Observer] Tel input not found (attempt ${attempt}), retrying...`);
-          setTimeout(() => fillTelInput(attempt + 1), 150);
-        } else {
-          console.warn('⚠️ [BNPL Observer] Tel input not found after 5 attempts');
-        }
-      };
-
-      const observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          for (const node of mutation.addedNodes) {
-            if (node.nodeType !== Node.ELEMENT_NODE) continue;
-
-            // Super Credit renders as a plain div (NOT an iframe).
-            // Detect it by its container id or the authentication step testid.
-            const isSuperCredit =
-              node.id === 'super-credit-container' ||
-              node.querySelector?.('#super-credit-container') ||
-              node.querySelector?.('[data-testid="super-credit-step-authentication"]');
-
-            // Keep iframe detection as a fallback for other BNPL providers
-            const iframes = node.tagName === 'IFRAME'
-              ? [node]
-              : Array.from(node.querySelectorAll?.('iframe') ?? []);
-
-            if (isSuperCredit) {
-              console.log('🎯 [BNPL Observer] Super Credit container detected in shadow DOM');
-              console.log('   ↳ Firing superpayments:displaySignIn with phone:', phoneRef.current);
-              triggerCustomPhoneNumberEvent(phoneRef.current);
-              // Give React one tick to finish rendering the input, then fill it
-              setTimeout(() => fillTelInput(), 100);
-            } else if (iframes.length > 0) {
-              const src = iframes[0].src || iframes[0].getAttribute('src') || '(no src yet)';
-              console.log('🎯 [BNPL Observer] iframe detected in shadow DOM');
-              console.log('   ↳ src:', src);
-              console.log('   ↳ Firing superpayments:displaySignIn with phone:', phoneRef.current);
-              triggerCustomPhoneNumberEvent(phoneRef.current);
-            }
-          }
-        }
-      });
-
-      observer.observe(shadowRoot, { childList: true, subtree: true });
-      bnplObserverRef.current = observer;
-      console.log('✅ [BNPL Observer] MutationObserver attached — watching for Super Credit div & iframes');
-    };
-
-    pollInterval = setInterval(() => {
-      const superCheckout = document.querySelector('super-checkout');
-      if (superCheckout?.shadowRoot) {
-        clearInterval(pollInterval);
-        attachObserver(superCheckout.shadowRoot);
-      }
-    }, 200);
-
-    return () => {
-      clearInterval(pollInterval);
-      if (bnplObserverRef.current) {
-        bnplObserverRef.current.disconnect();
-        bnplObserverRef.current = null;
-        console.log('🧹 [BNPL Observer] Disconnected on cleanup');
-      }
-    };
-  }, [sessionToken, triggerCustomPhoneNumberEvent]);
-
-  const handleSaveAndSync = useCallback(() => {
-    setLoading(true);
+  const handleSaveDetails = useCallback(() => {
     localStorage.setItem('billing_cache', JSON.stringify(billingDetails));
-    
-    const superCheckout = document.querySelector('super-checkout');
-    if (superCheckout?.shadowRoot) {
-      const editBtn = superCheckout.shadowRoot.querySelector('[data-testid="change-phone-number-button"]');
-      if (editBtn) editBtn.click(); 
-    }
-
-    setTimeout(() => {
-      triggerCustomPhoneNumberEvent(billingDetails.phoneNumber);
-      setLoading(false);
-    }, 200);
-  }, [billingDetails, triggerCustomPhoneNumberEvent]);
+  }, [billingDetails]);
 
   const handlePlaceOrder = async () => {
     if (!window.superCheckout) return;
@@ -426,10 +280,10 @@ const CheckoutPage = () => {
           </select>
         </div>
         <button 
-          onClick={handleSaveAndSync}
+          onClick={handleSaveDetails}
           style={{ width: '100%', marginTop: '20px', padding: '16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
         >
-          Save & Sync Details
+          Save Details
         </button>
       </div>
 
