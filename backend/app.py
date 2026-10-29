@@ -418,6 +418,18 @@ def create_checkout():
                 customer_obj["savePaymentMethod"] = True
             payload["customer"] = customer_obj
 
+    # 2026-08-01 adds a shopper object carrying the shopper's contact details.
+    # 2026-04-01 accepts and silently ignores it, so it is only sent on the
+    # version that uses it. The phone must be a real GB or US number in E.164
+    # format — the API validates it, and Ofcom's reserved 07700 900xxx test
+    # range is rejected. Dummy values unless overridden.
+    if current_api_version == '2026-08-01':
+        payload["shopper"] = {
+            "phone": frontend_data.get("shopperPhone") or "+447400123456",
+            "email": frontend_data.get("shopperEmail") or "shopper@example.com",
+        }
+        print(f"[checkout-sessions] shopper object: {payload['shopper']}")
+
     # Raw session override — lets the Client Mock page send a hand-edited
     # checkout-session body verbatim, so a client's exact request shape can be
     # reproduced without a code change. paymentInitiatorId is injected only if
