@@ -492,6 +492,7 @@ def proceed_checkout(session_id):
             "addressLine1": "123 Test Street",
             "city": "London",
             "country": "GB",
+            "postCode": "E1 6AN",
             "email": frontend_data.get("email") or "customer@example.com",
             "phone": frontend_data.get("phone") or "07700900000"
         },
@@ -501,6 +502,7 @@ def proceed_checkout(session_id):
             "addressLine1": "123 Test Street",
             "city": "London",
             "country": "GB",
+            "postCode": "E1 6AN",
             "email": frontend_data.get("email") or "customer@example.com",
             "phone": frontend_data.get("phone") or "07700900000"
         },
