@@ -510,12 +510,19 @@ def proceed_checkout(session_id):
 
     if wowcher_flow:
         payload["preferNativeActions"] = True
+        # ON_SESSION is the one-click case (shopper present); OFF_SESSION stores
+        # the card for merchant-initiated charges. Driven from the page so both
+        # can be produced without a code change.
+        future_usage = frontend_data.get("futureUsage")
+        if future_usage not in ("ON_SESSION", "OFF_SESSION"):
+            future_usage = "OFF_SESSION"
         payload["customer"] = {
             "id": frontend_data.get("customerId"),
             "savePaymentMethodOptions": {
-                "futureUsage": "OFF_SESSION",
+                "futureUsage": future_usage,
             },
         }
+        print(f"[proceed] savePaymentMethodOptions.futureUsage: {future_usage}")
     elif upsell_flow:
         payload["preferNativeActions"] = True
 

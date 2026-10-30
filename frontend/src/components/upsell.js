@@ -56,6 +56,10 @@ const UpsellCheckout = () => {
   const [step, setStep] = useState('flow-select');
   const [flow, setFlow] = useState(null);
   const [paymentToDisplay, setPaymentToDisplay] = useState(null);
+  // savePaymentMethodOptions.futureUsage on /proceed. OFF_SESSION stores the
+  // card for merchant-initiated charges; ON_SESSION is the one-click case,
+  // which is what the component should offer a returning shopper.
+  const [futureUsage, setFutureUsage] = useState('OFF_SESSION');
   const [sessionToken, setSessionToken] = useState(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState(null);
   const [customerId, setCustomerId] = useState(null);
@@ -96,8 +100,8 @@ const UpsellCheckout = () => {
 
 
   useEffect(() => {
-    walletCtxRef.current = { checkoutSessionId, customerId, checkoutAmount };
-  }, [checkoutSessionId, customerId, checkoutAmount]);
+    walletCtxRef.current = { checkoutSessionId, customerId, checkoutAmount, futureUsage };
+  }, [checkoutSessionId, customerId, checkoutAmount, futureUsage]);
 
   // ── Poll for super-single-checkout readiness (save-card flow) ────────────
   useEffect(() => {
@@ -148,6 +152,7 @@ const UpsellCheckout = () => {
                 externalReference: `SAVECARD_ORDER_${Date.now()}`,
                 wowcherFlow: true,
                 customerId: ctx.customerId,
+                futureUsage: ctx.futureUsage,
               }),
             });
             const proceedData = await response.json();
@@ -349,6 +354,7 @@ const UpsellCheckout = () => {
           externalReference: `SAVECARD_ORDER_${Date.now()}`,
           wowcherFlow: true,
           customerId,
+          futureUsage,
         }),
       });
       const proceedData = await response.json();
@@ -609,9 +615,37 @@ const UpsellCheckout = () => {
 
         <div style={{ maxWidth: '560px' }}>
           <h1 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Checkout</h1>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '28px' }}>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
             Complete your payment — your card will be saved for future purchases.
           </p>
+
+          <div style={{ marginBottom: '24px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
+              <code>savePaymentMethodOptions.futureUsage</code>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              {['OFF_SESSION', 'ON_SESSION'].map(v => (
+                <button
+                  key={v}
+                  onClick={() => setFutureUsage(v)}
+                  style={{
+                    padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+                    fontFamily: 'monospace', border: '1px solid',
+                    borderColor: futureUsage === v ? '#000' : '#ddd',
+                    backgroundColor: futureUsage === v ? '#000' : '#fff',
+                    color: futureUsage === v ? '#fff' : '#333',
+                  }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>
+              {futureUsage === 'OFF_SESSION'
+                ? 'Stored for merchant-initiated charges, shopper absent. Every saved card on this account is currently OFF_SESSION.'
+                : 'The one-click case — shopper present. Use this to test whether a returning customer sees their saved card in the component.'}
+            </p>
+          </div>
 
           <super-single-checkout
             ref={el => { if (el) { el.paymentToDisplay = paymentToDisplay; el.displayAuth = displayAuth; el.supportCreditPopup = supportCreditPopup; } }}
