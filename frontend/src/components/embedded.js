@@ -56,11 +56,6 @@ const CheckoutPage = () => {
   // Controls the "Place Order" button visibility based on the global SDK object
   const [isSdkReady, setIsSdkReady] = useState(false);
 
-  // The component's amount attribute. Changing this re-posts the SDK's
-  // setConfig to the Adyen host, which is the only route that reaches the
-  // wallet sheet — submit({ amount }) happens too late for wallets.
-  const [liveAmount, setLiveAmount] = useState(null);
-
   // Per the docs, submit({ amount }) updates what the component charges
   // without re-rendering it — unlike changing the amount attribute, which
   // refetches the session. Blank means send no amount at all.
@@ -79,14 +74,6 @@ const CheckoutPage = () => {
       amount: 15000,
     };
   });
-
-  // Seed the live amount from the config, then leave it under the control of
-  // the input below.
-  useEffect(() => {
-    setLiveAmount(prev => (prev === null ? sdkConfig.amount : prev));
-  }, [sdkConfig.amount]);
-
-  const effectiveAmount = liveAmount === null ? sdkConfig.amount : liveAmount;
 
   const [billingDetails, setBillingDetails] = useState({
     firstName: 'Mark',
@@ -164,7 +151,7 @@ const CheckoutPage = () => {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                amount: effectiveAmount,
+                amount: sdkConfig.amount,
                 firstName: contact?.billing?.firstName || bd.firstName,
                 lastName: contact?.billing?.lastName || bd.lastName,
                 email: contact?.email || contact?.billing?.email || bd.email,
@@ -233,7 +220,7 @@ const CheckoutPage = () => {
         },
         ...(useOverride ? { amount: override } : {}),
       };
-      console.log('[Submit] component amount:', effectiveAmount,
+      console.log('[Submit] component amount:', sdkConfig.amount,
                   '| submit() amount:', useOverride ? override : '(not sent)');
 
       const result = await window.superCheckout.submit(submitArgs);
@@ -251,7 +238,7 @@ const CheckoutPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: (useOverride && matchProceedAmount) ? override : effectiveAmount,
+          amount: (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
           firstName: billingDetails.firstName,
           lastName: billingDetails.lastName,
           email: billingDetails.email,
@@ -262,7 +249,7 @@ const CheckoutPage = () => {
 
       const proceedData = await response.json();
       console.log('[Submit] proceed amount:',
-                  (useOverride && matchProceedAmount) ? override : effectiveAmount,
+                  (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
                   '| HTTP', response.status);
       console.log("Proceed Response Error: " + proceedData.detail)
       console.log("Proceed Response Redirect URL: " + proceedData.redirectUrl)
@@ -291,8 +278,6 @@ const CheckoutPage = () => {
     init();
   }, []);
 
-  // Deliberately excludes the amount: changing it should update the attribute
-  // in place rather than remounting the component.
   const refreshKey = `${sessionToken}-${sdkConfig.paymentMethodsOrder}`;
   const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
 
@@ -328,7 +313,7 @@ const CheckoutPage = () => {
           <>
             <super-checkout
               key={refreshKey}
-              amount={String(effectiveAmount)}
+              amount={String(sdkConfig.amount)}
               checkout-session-token={sessionToken}
               title={sdkConfig.title}
               subtitle={sdkConfig.subtitle}
@@ -339,45 +324,16 @@ const CheckoutPage = () => {
             />
 
             {isSdkReady && (
-              <div style={{ marginTop: '22px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#eef4fb', border: '1px solid #b9d4ee' }}>
+              <div style={{ marginTop: '22px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0' }}>
                 <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
-                  <code>amount</code> attribute — the only route that reaches wallets
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#666' }}>minor units</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={effectiveAmount}
-                    onChange={e => setLiveAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #b9d4ee', fontSize: '13px', fontFamily: 'monospace' }}
-                  />
-                  <button
-                    onClick={() => setLiveAmount(sdkConfig.amount)}
-                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #b9d4ee', background: '#fff', fontSize: '12px', cursor: 'pointer' }}
-                  >
-                    reset
-                  </button>
-                </div>
-                <p style={{ margin: 0, fontSize: '11px', color: '#555' }}>
-                  Changes the attribute in place — the component is not remounted, so the SDK
-                  re-posts its config to the Adyen host. Change this <strong>before</strong>
-                  {' '}opening the Apple Pay / Google Pay sheet and the new total should appear.
-                </p>
-              </div>
-            )}
-
-            {isSdkReady && (
-              <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0' }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
-                  <code>submit({'{ amount }'})</code> — card only, no effect on wallets
+                  <code>submit({'{ amount }'})</code> — update the amount at submit time
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <span style={{ fontSize: '12px', color: '#666' }}>minor units</span>
                   <input
                     type="number"
                     min="0"
-                    placeholder={`blank = don't send (component has ${effectiveAmount})`}
+                    placeholder={`blank = don't send (component has ${sdkConfig.amount})`}
                     value={submitAmount}
                     onChange={e => setSubmitAmount(e.target.value)}
                     style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
@@ -393,7 +349,7 @@ const CheckoutPage = () => {
                 </label>
                 <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#666' }}>
                   {!submitAmount
-                    ? 'No amount is sent to submit() — the component charges the attribute amount above.'
+                    ? 'No amount is sent to submit() — the component charges its own amount.'
                     : matchProceedAmount
                       ? 'Component and /proceed will agree.'
                       : 'Deliberate mismatch: the component charges the new amount while /proceed sends the original.'}
@@ -409,7 +365,7 @@ const CheckoutPage = () => {
                   width: '100%', marginTop: '25px', padding: '18px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1
                 }}
               >
-                {loading ? 'Processing Order...' : `Place Order — £${(effectiveAmount / 100).toFixed(2)}`}
+                {loading ? 'Processing Order...' : `Place Order — £${(sdkConfig.amount / 100).toFixed(2)}`}
               </button>
             )}
             
