@@ -56,6 +56,14 @@ const CheckoutPage = () => {
   // Controls the "Place Order" button visibility based on the global SDK object
   const [isSdkReady, setIsSdkReady] = useState(false);
 
+  // Per the docs, submit({ amount }) updates what the component charges
+  // without re-rendering it — unlike changing the amount attribute, which
+  // refetches the session. Blank means send no amount at all.
+  const [submitAmount, setSubmitAmount] = useState('');
+  // Whether /proceed is told about the new amount. Leaving it off reproduces
+  // the component/proceed mismatch that returns an error.
+  const [matchProceedAmount, setMatchProceedAmount] = useState(true);
+
   const [sdkConfig, setSdkConfig] = useState(() => {
     const saved = localStorage.getItem('sdk_config');
     return saved ? { ...JSON.parse(saved), subtitle: 'Pay with Super and earn cash rewards' } : {
@@ -200,14 +208,22 @@ const CheckoutPage = () => {
     setErrorMessage('');
 
     try {
-      const result = await window.superCheckout.submit({
+      const override = parseInt(submitAmount, 10);
+      const useOverride = Number.isFinite(override) && override > 0;
+
+      const submitArgs = {
         customerInformation: {
           firstName: billingDetails.firstName,
           lastName: billingDetails.lastName,
           email: billingDetails.email,
           phoneNumber: billingDetails.phoneNumber,
         },
-      });
+        ...(useOverride ? { amount: override } : {}),
+      };
+      console.log('[Submit] component amount:', sdkConfig.amount,
+                  '| submit() amount:', useOverride ? override : '(not sent)');
+
+      const result = await window.superCheckout.submit(submitArgs);
 
       console.log("Result Status " + result.status)
 
@@ -222,7 +238,7 @@ const CheckoutPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: sdkConfig.amount,
+          amount: (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
           firstName: billingDetails.firstName,
           lastName: billingDetails.lastName,
           email: billingDetails.email,
@@ -232,6 +248,9 @@ const CheckoutPage = () => {
       });
 
       const proceedData = await response.json();
+      console.log('[Submit] proceed amount:',
+                  (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
+                  '| HTTP', response.status);
       console.log("Proceed Response Error: " + proceedData.detail)
       console.log("Proceed Response Redirect URL: " + proceedData.redirectUrl)
       console.log("Proceed Response Decline Reason: " + proceedData.extensions?.issues?.declineReason)
@@ -303,6 +322,40 @@ const CheckoutPage = () => {
               {...(sdkConfig.preSelectedPaymentMethod
                 ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
             />
+
+            {isSdkReady && (
+              <div style={{ marginTop: '22px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
+                  <code>submit({'{ amount }'})</code> — update the amount at submit time
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#666' }}>minor units</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder={`blank = don't send (component has ${sdkConfig.amount})`}
+                    value={submitAmount}
+                    onChange={e => setSubmitAmount(e.target.value)}
+                    style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
+                  />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555' }}>
+                  <input
+                    type="checkbox"
+                    checked={matchProceedAmount}
+                    onChange={e => setMatchProceedAmount(e.target.checked)}
+                  />
+                  Send the same amount on <code>/proceed</code>
+                </label>
+                <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#666' }}>
+                  {!submitAmount
+                    ? 'No amount is sent to submit() — the component charges its own amount.'
+                    : matchProceedAmount
+                      ? 'Component and /proceed will agree.'
+                      : 'Deliberate mismatch: the component charges the new amount while /proceed sends the original.'}
+                </p>
+              </div>
+            )}
 
             {isSdkReady && (
               <button
