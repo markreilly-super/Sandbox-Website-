@@ -56,6 +56,10 @@ const CheckoutPage = () => {
   // Controls the "Place Order" button visibility based on the global SDK object
   const [isSdkReady, setIsSdkReady] = useState(false);
 
+  // Request inline 3DS. With it, /proceed returns a nativeNextAction to be
+  // resolved on the component instead of an immediately-usable redirectUrl.
+  const [preferNativeActions, setPreferNativeActions] = useState(false);
+
   // Per the docs, submit({ amount }) updates what the component charges
   // without re-rendering it — unlike changing the amount attribute, which
   // refetches the session. Blank means send no amount at all.
@@ -244,6 +248,7 @@ const CheckoutPage = () => {
           email: billingDetails.email,
           phone: billingDetails.phoneNumber,
           externalReference: `ORDER_${Date.now()}`,
+          ...(preferNativeActions ? { preferNativeActions: true } : {}),
         }),
       });
 
@@ -254,6 +259,27 @@ const CheckoutPage = () => {
       console.log("Proceed Response Error: " + proceedData.detail)
       console.log("Proceed Response Redirect URL: " + proceedData.redirectUrl)
       console.log("Proceed Response Decline Reason: " + proceedData.extensions?.issues?.declineReason)
+      if (proceedData.nativeNextAction) {
+        // super-checkout exposes handleNextAction on the global object.
+        console.log('[3DS] nativeNextAction returned — resolving inline');
+        const el = document.querySelector('super-checkout');
+        const handler = window.superCheckout?.handleNextAction
+          ? window.superCheckout
+          : el;
+        if (!handler?.handleNextAction) {
+          setErrorMessage('handleNextAction is not available on this component.');
+          return;
+        }
+        const nextResult = await handler.handleNextAction(proceedData.nativeNextAction);
+        console.log('[3DS] handleNextAction result:', nextResult);
+        if (nextResult?.status === 'SUCCESS') {
+          window.location.href = nextResult.redirectUrl;
+        } else {
+          setErrorMessage(nextResult?.errorMessage || 'Payment failed during 3DS.');
+        }
+        return;
+      }
+
       if (proceedData.redirectUrl) {
         window.location.href = proceedData.redirectUrl;
       }
@@ -339,6 +365,14 @@ const CheckoutPage = () => {
                     style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
                   />
                 </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555', marginBottom: '6px' }}>
+                  <input
+                    type="checkbox"
+                    checked={preferNativeActions}
+                    onChange={e => setPreferNativeActions(e.target.checked)}
+                  />
+                  Send <code>preferNativeActions: true</code> — keep 3DS inline
+                </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555' }}>
                   <input
                     type="checkbox"
