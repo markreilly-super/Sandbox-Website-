@@ -425,7 +425,7 @@ def create_checkout():
     # range is rejected. Dummy values unless overridden.
     if current_api_version == '2026-08-01':
         payload["shopper"] = {
-            "phone": frontend_data.get("shopperPhone") or "+447462753524",
+            "phone": frontend_data.get("shopperPhone") or "+4407462753524",
             "email": frontend_data.get("shopperEmail") or "shopper@example.com",
         }
         print(f"[checkout-sessions] shopper object: {payload['shopper']}")
