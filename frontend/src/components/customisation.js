@@ -12,6 +12,26 @@ const SCHEMA = {
   title: ['fontFamily', 'fontSize', 'color'],
 };
 
+// A real merchant's theme, kept verbatim so it can be reproduced exactly.
+const MERCHANT_THEME = {
+  hideSuperApp: true,
+  container: {
+    backgroundColor: 'transparent',
+    borderRadius: '12px',
+  },
+  tabStyles: {
+    backgroundColor: 'transparent',
+    selectedBackgroundColor: 'hsl(0 0% 100%)',
+    borderColor: 'hsl(203 93% 39%)',
+    borderRadius: '12px',
+    borderWidth: '1px',
+    color: 'hsl(0 0% 20%)',
+  },
+  title: {
+    color: 'hsl(0 0% 20%)',
+  },
+};
+
 const STARTER_THEME = {
   hideSuperApp: false,
   tabStyles: {
@@ -41,6 +61,16 @@ const CustomisationPage = () => {
   const [title, setTitle] = useState('Secure Checkout');
   const [subtitle, setSubtitle] = useState('Pay with Super and earn cash rewards');
   const [amount, setAmount] = useState(158500);
+
+  // payment-methods-order / pre-selected-payment-method come from Account
+  // Settings, so the full attribute set can be exercised here.
+  const [sdkConfig] = useState(() => {
+    const saved = localStorage.getItem('sdk_config');
+    return saved ? JSON.parse(saved) : {
+      paymentMethodsOrder: 'CARD,OPEN_BANKING,BNPL',
+      preSelectedPaymentMethod: 'CARD',
+    };
+  });
 
   const [sessionToken, setSessionToken] = useState(null);
   const [sessionError, setSessionError] = useState('');
@@ -158,6 +188,21 @@ const CustomisationPage = () => {
           is clean, the flag is the reason — not the theme.
         </div>
 
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          <button
+            onClick={() => setThemeText(JSON.stringify(MERCHANT_THEME, null, 2))}
+            style={{ padding: '7px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}
+          >
+            Load merchant theme
+          </button>
+          <button
+            onClick={() => setThemeText(JSON.stringify(STARTER_THEME, null, 2))}
+            style={{ padding: '7px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}
+          >
+            Reset to starter
+          </button>
+        </div>
+
         {renderGroup('tabStyles')}
         {renderGroup('container')}
         {renderGroup('title')}
@@ -243,12 +288,17 @@ const CustomisationPage = () => {
         {sessionError && <p style={{ color: '#e74c3c', fontSize: '13px' }}>{sessionError}</p>}
         {sessionToken && theme ? (
           <super-checkout
+            id="super-checkout"
             key={`${sessionToken}-${themeText}-${title}-${subtitle}-${amount}`}
             amount={String(amount)}
             currency="GBP"
             checkout-session-token={sessionToken}
             title={title}
             subtitle={subtitle}
+            {...(sdkConfig.paymentMethodsOrder
+              ? { 'payment-methods-order': sdkConfig.paymentMethodsOrder } : {})}
+            {...(sdkConfig.preSelectedPaymentMethod
+              ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
             theme={JSON.stringify(theme)}
           />
         ) : !sessionError ? (
