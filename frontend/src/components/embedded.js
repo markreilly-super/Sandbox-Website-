@@ -253,6 +253,12 @@ const CheckoutPage = () => {
       });
 
       const proceedData = await response.json();
+      // Full object — the per-field logs below hide anything not named,
+      // which is why a nativeNextAction was invisible.
+      console.log('[Proceed] preferNativeActions sent:', !!preferNativeActions);
+      console.log('[Proceed] HTTP', response.status, 'response:', proceedData);
+      console.log('[Proceed] keys:', Object.keys(proceedData));
+      console.log('[Proceed] nativeNextAction present:', !!proceedData.nativeNextAction);
       console.log('[Submit] proceed amount:',
                   (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
                   '| HTTP', response.status);
