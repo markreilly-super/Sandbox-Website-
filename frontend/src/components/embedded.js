@@ -230,6 +230,7 @@ const CheckoutPage = () => {
       const result = await window.superCheckout.submit(submitArgs);
 
       console.log("Result Status " + result.status)
+      console.log("Result Error Message " + result.errorMessage)
 
       if (result.status === 'FAILURE') {
         setErrorMessage(result.errorMessage || 'Payment Failed');
