@@ -32,6 +32,40 @@ import DropdownCheckout from './components/dropdownCheckout';
 // card fingerprint. We deep-scan every JSON response from *.stripe.com or
 // *.superpayments.com for last4 / brand and store it in window.__stripeCardData.
 // ─────────────────────────────────────────────────────────────────────────────
+// Stamp the selected API version on every call to our own backend. The
+// backend used to hold this in a module-level global, which silently reset to
+// the default whenever the free Render instance spun down — the UI still
+// showed the chosen version while requests went out on the old one. Sending it
+// per request makes it immune to restarts.
+(function installApiVersionHeader() {
+  if (window.__superApiVersionSet) return;
+  window.__superApiVersionSet = true;
+
+  const BACKEND = process.env.REACT_APP_BACKEND_URL || '';
+  const origFetch = window.fetch;
+
+  const isOwnBackend = (url) => {
+    try {
+      const u = new URL(url, window.location.origin);
+      if (BACKEND) return u.origin === new URL(BACKEND, window.location.origin).origin;
+      return u.origin === window.location.origin;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  window.fetch = function (input, init = {}) {
+    const url = typeof input === 'string' ? input : input?.url;
+    if (url && isOwnBackend(url)) {
+      const version = localStorage.getItem('super_api_version') || '2026-04-01';
+      const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined) || {});
+      headers.set('X-Api-Version', version);
+      init = { ...init, headers };
+    }
+    return origFetch.call(this, input, init);
+  };
+})();
+
 (function installCardInterceptor() {
   if (window.__superInterceptorSet) return;
   window.__superInterceptorSet = true;

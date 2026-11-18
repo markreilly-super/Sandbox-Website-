@@ -11,7 +11,7 @@ import threading
 import queue
 from collections import deque
 from datetime import datetime
-from flask import Flask, jsonify, request, Response, send_from_directory
+from flask import Flask, jsonify, request, Response, send_from_directory, has_request_context
 from flask_cors import CORS
 
 # Load .env file if present (keeps secrets out of source control)
@@ -81,10 +81,29 @@ CUSTOMER_LIST_API_VERSION = '2026-08-01'
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
 stripe.api_key = STRIPE_SECRET_KEY
 
+def resolve_api_version():
+    """The version for this request.
+
+    Prefer the X-Api-Version header the frontend sends on every call. The
+    module-level global is only a fallback: this process restarts whenever the
+    free Render instance spins down, which silently reset the version to the
+    default while the browser still showed the chosen one.
+    """
+    try:
+        if has_request_context():
+            header = request.headers.get('X-Api-Version')
+            if header in API_VERSIONS:
+                return header
+    except Exception:
+        pass
+    return current_api_version
+
+
 def get_config():
     cfg = dict(CREDENTIALS[current_env])
+    cfg['api_version'] = resolve_api_version()
     if cfg.get('base_url'):
-        cfg['base_url'] = f"{cfg['base_url']}/{current_api_version}"
+        cfg['base_url'] = f"{cfg['base_url']}/{cfg['api_version']}"
     return cfg
 
 # ── Webhook signature verification ────────────────────────────────────────────
@@ -178,12 +197,17 @@ def api_request(method, url, headers, json_body=None):
     """Make a request to Super Payments API, log it, and return the response."""
     cfg = get_config()
     path = url[len(cfg['base_url']):] or '/'
+    # The version lives in base_url, so stripping it hid which version a call
+    # actually used. Keep it on the logged endpoint.
+    api_version = cfg.get('api_version', current_api_version)
+    versioned_path = f"/{api_version}{path}"
 
     entry = {
         'id': str(uuid.uuid4()),
         'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.') + f"{datetime.utcnow().microsecond // 1000:03d}Z",
         'method': method.upper(),
-        'endpoint': path,
+        'endpoint': versioned_path,
+        'api_version': api_version,
         'request_body': json_body,
         'status': None,
         'response_body': None,
@@ -414,7 +438,7 @@ def create_checkout():
             }
         else:
             customer_obj = {"id": customer_id}
-            if current_api_version == '2026-04-01':
+            if cfg['api_version'] == '2026-04-01':
                 customer_obj["savePaymentMethod"] = True
             payload["customer"] = customer_obj
 
@@ -423,7 +447,7 @@ def create_checkout():
     # version that uses it. The phone must be a real GB or US number in E.164
     # format — the API validates it, and Ofcom's reserved 07700 900xxx test
     # range is rejected. Dummy values unless overridden.
-    if current_api_version == '2026-08-01':
+    if cfg['api_version'] == '2026-08-01':
         payload["shopper"] = {
             "phone": frontend_data.get("shopperPhone") or "+4407462753524",
             "email": frontend_data.get("shopperEmail") or "shopper@example.com",
