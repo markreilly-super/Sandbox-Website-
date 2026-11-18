@@ -21,6 +21,7 @@ import BnplPopupCheckout from './components/bnplPopup';
 import ClientMock from './components/clientMock';
 import CustomisationPage from './components/customisation';
 import ModalCheckout from './components/modalCheckout';
+import DropdownCheckout from './components/dropdownCheckout';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global card-data interceptor – runs at module load time, before any SDK
@@ -180,6 +181,7 @@ const App = () => {
         <Route path="/client-mock" element={<ClientMock />} />
         <Route path="/customisation" element={<CustomisationPage />} />
         <Route path="/modal-checkout" element={<ModalCheckout />} />
+        <Route path="/dropdown-checkout" element={<DropdownCheckout />} />
         <Route path="/success" element={<Success />} />
         <Route path="/failure" element={<Failure />} />
       </Routes>
