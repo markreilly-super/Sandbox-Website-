@@ -56,6 +56,11 @@ const CheckoutPage = () => {
   // Controls the "Place Order" button visibility based on the global SDK object
   const [isSdkReady, setIsSdkReady] = useState(false);
 
+  // The wallet sheet's amount comes from the component's amount attribute and
+  // is fixed once the sheet opens. This sends a different amount on /proceed,
+  // so the two can be made to disagree deliberately.
+  const [walletProceedAmount, setWalletProceedAmount] = useState('');
+
   // Request inline 3DS. With it, /proceed returns a nativeNextAction to be
   // resolved on the component instead of an immediately-usable redirectUrl.
   const [preferNativeActions, setPreferNativeActions] = useState(false);
@@ -92,6 +97,11 @@ const CheckoutPage = () => {
   // Always holds the latest billing details for the wallets handler closure
   const billingDetailsRef = useRef(billingDetails);
   useEffect(() => { billingDetailsRef.current = billingDetails; }, [billingDetails]);
+
+  // Same reason: the wallets handler is registered once per session, so it
+  // would otherwise capture whatever the override was at registration time.
+  const walletProceedAmountRef = useRef('');
+  useEffect(() => { walletProceedAmountRef.current = walletProceedAmount; }, [walletProceedAmount]);
 
   const walletsListenerAdded = useRef(false);
 
@@ -151,11 +161,18 @@ const CheckoutPage = () => {
           console.log('[Wallets] handler fired — sheet already resolved; calling /proceed next');
           try {
             const bd = billingDetailsRef.current;
+            const walletOverride = parseInt(walletProceedAmountRef.current, 10);
+            const walletAmount = Number.isFinite(walletOverride) && walletOverride > 0
+              ? walletOverride
+              : sdkConfig.amount;
+            console.log('[Wallets] sheet amount:', sdkConfig.amount,
+                        '| proceed amount:', walletAmount,
+                        walletAmount === sdkConfig.amount ? '(match)' : '(MISMATCH)');
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                amount: sdkConfig.amount,
+                amount: walletAmount,
                 firstName: contact?.billing?.firstName || bd.firstName,
                 lastName: contact?.billing?.lastName || bd.lastName,
                 email: contact?.email || contact?.billing?.email || bd.email,
@@ -372,6 +389,29 @@ const CheckoutPage = () => {
                     style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
                   />
                 </div>
+                <div style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #e8e8e8' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
+                    Wallet <code>/proceed</code> amount
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: '#666' }}>minor units</span>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder={`blank = same as the sheet (${sdkConfig.amount})`}
+                      value={walletProceedAmount}
+                      onChange={e => setWalletProceedAmount(e.target.value)}
+                      style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
+                    />
+                  </div>
+                  <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#666' }}>
+                    The Apple Pay / Google Pay sheet always charges the component's
+                    amount ({sdkConfig.amount}) and cannot be changed after mount. This
+                    changes only what <code>/proceed</code> sends, so the two can be made
+                    to disagree on purpose.
+                  </p>
+                </div>
+
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555', marginBottom: '6px' }}>
                   <input
                     type="checkbox"
