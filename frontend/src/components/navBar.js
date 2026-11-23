@@ -25,7 +25,12 @@ const NavBar = () => {
   const navStyle = {
     display: 'flex',
     gap: '20px',
-    padding: '15px 30px',
+    // Standalone (installed) mode draws under the status bar because
+    // index.html sets viewport-fit=cover + black-translucent, so the top
+    // padding has to clear the notch. env() is 0px in a normal browser tab.
+    padding: 'calc(15px + env(safe-area-inset-top)) 30px 15px',
+    paddingLeft: 'calc(30px + env(safe-area-inset-left))',
+    paddingRight: 'calc(30px + env(safe-area-inset-right))',
     backgroundColor: '#1a1a1a',
     color: 'white',
     alignItems: 'center'

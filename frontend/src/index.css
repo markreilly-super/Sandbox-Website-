@@ -1,5 +1,8 @@
 body {
   margin: 0;
+  /* Matches background_color in manifest.json so the installed app does not
+     flash white between the splash screen and the first paint. */
+  background-color: #f8f9fb;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
