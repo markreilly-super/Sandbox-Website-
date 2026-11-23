@@ -215,3 +215,10 @@ frontend/build/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Local CSP audit harness (node_modules + generated results, kept out of git)
+csp-harness/
