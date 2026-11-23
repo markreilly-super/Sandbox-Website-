@@ -51,6 +51,49 @@ const FlowBadge = ({ flow }) => {
   );
 };
 
+// Apple and Google return their own raw contact shapes, so branch on
+// detail.type before reading fields. Apple uses givenName/familyName and an
+// addressLines array; Google uses a single name and address1.
+const normaliseWalletContact = (detail) => {
+  if (!detail || !detail.type) return null;
+  const pick = (addr) => {
+    if (!addr) return null;
+    if (detail.type === 'applepay') {
+      return {
+        firstName: addr.givenName ?? null,
+        lastName: addr.familyName ?? null,
+        addressLine1: Array.isArray(addr.addressLines) ? (addr.addressLines[0] ?? null) : null,
+        addressLine2: Array.isArray(addr.addressLines) ? (addr.addressLines[1] ?? null) : null,
+        city: addr.locality ?? null,
+        county: addr.administrativeArea ?? null,
+        postCode: addr.postalCode ?? null,
+        country: addr.countryCode ?? null,
+        email: addr.emailAddress ?? null,
+        phone: addr.phoneNumber ?? null,
+      };
+    }
+    // googlepay
+    return {
+      firstName: (addr.name || '').split(' ')[0] || null,
+      lastName: (addr.name || '').split(' ').slice(1).join(' ') || null,
+      addressLine1: addr.address1 ?? null,
+      addressLine2: addr.address2 ?? null,
+      city: addr.locality ?? null,
+      county: addr.administrativeArea ?? null,
+      postCode: addr.postalCode ?? null,
+      country: addr.countryCode ?? null,
+      email: addr.emailAddress ?? null,
+      phone: addr.phoneNumber ?? null,
+    };
+  };
+  return {
+    type: detail.type,
+    email: detail.email ?? null,
+    billing: pick(detail.billingAddress),
+    shipping: pick(detail.shippingAddress),
+  };
+};
+
 const UpsellCheckout = () => {
   // step: flow-select | display-select | basket | upsell-checkout | save-card-checkout
   const [step, setStep] = useState('flow-select');
@@ -137,7 +180,17 @@ const UpsellCheckout = () => {
         clearInterval(interval);
 
         el.registerWalletsHandler(async (event) => {
-          console.log('[SaveCard] wallets handler fired:', event?.detail?.type);
+          // This component sets displayExpressWalletsOnly via payment-to-display,
+          // which is what makes the sheet request contact fields — so unlike the
+          // embedded page the addresses should actually be populated here.
+          const detail = event?.detail;
+          console.log('[SaveCard] wallets handler fired:', detail?.type);
+          console.log('[SaveCard] raw event.detail:', detail);
+          console.log('[SaveCard] detail keys:', detail ? Object.keys(detail) : null);
+          console.log('[SaveCard] email:', detail?.email);
+          console.log('[SaveCard] billingAddress:', detail?.billingAddress);
+          console.log('[SaveCard] shippingAddress:', detail?.shippingAddress);
+          console.log('[SaveCard] normalised:', normaliseWalletContact(detail));
           setLoading(true);
           setError('');
           try {
