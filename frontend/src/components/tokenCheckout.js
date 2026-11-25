@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { proceedAddressFields } from '../walletAddress';
 
 // TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
@@ -112,7 +113,9 @@ const TokenCheckout = () => {
         walletsListenerAdded.current = true;
         clearInterval(interval);
 
-        window.superCheckout.registerWalletsHandler(async () => {
+        window.superCheckout.registerWalletsHandler(async (event) => {
+          const detail = event?.detail;
+          console.log('[Wallets] payment type:', detail?.type);
           try {
             const bd = billingDetailsRef.current;
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
@@ -123,6 +126,7 @@ const TokenCheckout = () => {
                 email: bd.email,
                 phone: bd.phoneNumber,
                 externalReference: `ORDER_${Date.now()}`,
+                ...proceedAddressFields(detail),
               }),
             });
             const proceedData = await response.json();

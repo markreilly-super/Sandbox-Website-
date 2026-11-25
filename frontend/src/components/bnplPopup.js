@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { proceedAddressFields } from '../walletAddress';
 
 // NGROK: set to '' to proxy via React dev server (ngrok mode)
 // TO REVERT TO LOCALHOST: change back to 'http://localhost:5000'
@@ -126,6 +127,7 @@ const BnplPopupCheckout = () => {
                 email: bd.email,
                 phone: bd.phoneNumber,
                 externalReference: `ORDER_${Date.now()}`,
+                ...proceedAddressFields(detail),
               }),
             });
             const proceedData = await response.json();

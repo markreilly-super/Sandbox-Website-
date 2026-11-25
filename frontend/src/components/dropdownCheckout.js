@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { proceedAddressFields } from '../walletAddress';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -69,7 +70,7 @@ const DropdownCheckout = () => {
         walletsRegistered.current = true;
         window.superCheckout.registerWalletsHandler(async (event) => {
           console.log('[Dropdown] wallets handler fired:', event?.detail?.type);
-          await sendProceed();
+          await sendProceed(event?.detail);
         });
       }
     }, 100);
@@ -92,7 +93,7 @@ const DropdownCheckout = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, sessionToken]);
 
-  const sendProceed = async () => {
+  const sendProceed = async (detail) => {
     const res = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -101,6 +102,7 @@ const DropdownCheckout = () => {
         email: 'customer@example.com',
         phone: '07700900000',
         externalReference: `DROPDOWN_ORDER_${Date.now()}`,
+        ...proceedAddressFields(detail),
       }),
     });
     const data = await res.json();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { proceedAddressFields } from '../walletAddress';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -282,6 +283,7 @@ const MockCheckout = () => {
                 email: detail.email || billingDetailsRef.current.email,
                 phone: billingDetailsRef.current.phone,
                 externalReference: `ORDER_${Date.now()}`,
+                ...proceedAddressFields(detail),
               }),
             });
             const data = await res.json();

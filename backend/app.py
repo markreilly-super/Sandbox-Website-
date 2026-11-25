@@ -478,6 +478,18 @@ def create_checkout():
         return jsonify({"error": str(e)}), 500
 
 
+# The address fields /proceed accepts. Anything else is dropped before the
+# request is forwarded, because the API rejects unknown keys. Note there is no
+# state / county / province field, so an express wallet's administrativeArea
+# ("NSW", "CA", ...) has nowhere to go and is discarded client-side.
+PROCEED_ADDRESS_FIELDS = (
+    "firstName", "lastName",
+    "addressLine1", "addressLine2", "addressLine3",
+    "city", "country", "postCode",
+    "email", "phone",
+)
+
+
 @app.route('/checkout-sessions/<session_id>/proceed', methods=['POST'])
 def proceed_checkout(session_id):
     """
@@ -535,6 +547,25 @@ def proceed_checkout(session_id):
             "phone": frontend_data.get("phone") or "07700900000"
         },
     }
+
+    # Express wallets return the shopper's real billing / shipping address on
+    # the confirmed event. When a page forwards it, it REPLACES the hardcoded
+    # test address wholesale rather than merging into it — a half-wallet,
+    # half-dummy address would look genuine without being genuine, which is the
+    # worst outcome when the point is to verify what the wallet actually gave us.
+    for _addr_field in ("billingAddress", "shippingAddress"):
+        _supplied = frontend_data.get(_addr_field)
+        if isinstance(_supplied, dict):
+            _filtered = {
+                k: v for k, v in _supplied.items()
+                if k in PROCEED_ADDRESS_FIELDS and v not in (None, "")
+            }
+            _dropped = sorted(set(_supplied) - set(_filtered))
+            if _filtered:
+                payload[_addr_field] = _filtered
+                print(f"[proceed] {_addr_field} from wallet: {_filtered}")
+                if _dropped:
+                    print(f"[proceed] {_addr_field} dropped keys: {_dropped}")
 
     if wowcher_flow:
         payload["preferNativeActions"] = True
