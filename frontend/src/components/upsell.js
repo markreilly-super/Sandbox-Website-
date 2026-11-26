@@ -67,6 +67,10 @@ const UpsellCheckout = () => {
   const [cardLast4, setCardLast4] = useState(null);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
   const [displayAuth, setDisplayAuth] = useState(false);
+  // preferNativeActions on /proceed. True completes the wallet payment inline
+  // via handleNextAction; false omits the flag entirely, which is the flow the
+  // Express Wallets docs describe and is expected to redirect to the hosted page.
+  const [preferNativeActions, setPreferNativeActions] = useState(true);
   const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
   const [isCardValid, setIsCardValid] = useState(false);
   const [supportCreditPopup] = useState(() => localStorage.getItem('super_credit_popup') !== 'false');
@@ -101,8 +105,8 @@ const UpsellCheckout = () => {
 
 
   useEffect(() => {
-    walletCtxRef.current = { checkoutSessionId, customerId, checkoutAmount, futureUsage };
-  }, [checkoutSessionId, customerId, checkoutAmount, futureUsage]);
+    walletCtxRef.current = { checkoutSessionId, customerId, checkoutAmount, futureUsage, preferNativeActions };
+  }, [checkoutSessionId, customerId, checkoutAmount, futureUsage, preferNativeActions]);
 
   // ── Poll for super-single-checkout readiness (save-card flow) ────────────
   useEffect(() => {
@@ -165,6 +169,7 @@ const UpsellCheckout = () => {
                 customerId: ctx.customerId,
                 futureUsage: ctx.futureUsage,
                 ...proceedAddressFields(detail),
+                preferNativeActions: ctx.preferNativeActions,
               }),
             });
             const proceedData = await response.json();
@@ -656,6 +661,34 @@ const UpsellCheckout = () => {
               {futureUsage === 'OFF_SESSION'
                 ? 'Stored for merchant-initiated charges, shopper absent. Every saved card on this account is currently OFF_SESSION.'
                 : 'The one-click case — shopper present. Use this to test whether a returning customer sees their saved card in the component.'}
+            </p>
+          </div>
+
+          <div style={{ marginBottom: '24px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
+              <code>preferNativeActions</code>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              {[true, false].map(v => (
+                <button
+                  key={String(v)}
+                  onClick={() => setPreferNativeActions(v)}
+                  style={{
+                    padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+                    fontFamily: 'monospace', border: '1px solid',
+                    borderColor: preferNativeActions === v ? '#000' : '#ddd',
+                    backgroundColor: preferNativeActions === v ? '#000' : '#fff',
+                    color: preferNativeActions === v ? '#fff' : '#333',
+                  }}
+                >
+                  {String(v)}
+                </button>
+              ))}
+            </div>
+            <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>
+              {preferNativeActions
+                ? 'Express wallet payments complete inline — /proceed returns a nativeNextAction which is handed to handleNextAction().'
+                : 'The flag is omitted from /proceed entirely, reproducing the flow as the Express Wallets docs describe it. Expected to return a redirectUrl and bounce to the hosted page.'}
             </p>
           </div>
 

@@ -590,6 +590,13 @@ def proceed_checkout(session_id):
     if frontend_data.get("preferNativeActions"):
         payload["preferNativeActions"] = True
 
+    # An explicit false from the page beats the flow defaults above. Omitting
+    # the key entirely (rather than sending false) reproduces a merchant who
+    # never sends it at all, which is the case the docs describe.
+    if "preferNativeActions" in frontend_data and not frontend_data["preferNativeActions"]:
+        payload.pop("preferNativeActions", None)
+        print("[proceed] preferNativeActions: OMITTED (explicit false from page)")
+
     # Raw payload override — lets the Token Checkout page send a hand-edited
     # proceed body verbatim. paymentInitiatorId is injected only if omitted,
     # so the request stays valid without the caller needing to know the ID.
