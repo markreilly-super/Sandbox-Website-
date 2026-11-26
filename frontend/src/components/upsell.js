@@ -91,6 +91,13 @@ const UpsellCheckout = () => {
   const skipUnregisterRef = useRef(false);
   // Labels each registration so the console shows which handler fired.
   const registrationSeq = useRef(0);
+  // The exact element we registered on. Re-entering the flow mints a new
+  // checkout session, and the component is keyed on the token, so React swaps
+  // in a fresh element before this effect's cleanup runs. Looking the element
+  // up by id at teardown therefore finds the NEW one, and aborting its (empty)
+  // AbortController leaves the old listener on window with nothing able to
+  // remove it. Unregister on the reference, never on a fresh query.
+  const walletElRef = useRef(null);
 
   const handleProceedResponse = async (proceedData, el, label) => {
     console.log(`[${label}] proceed response:`, proceedData);
@@ -155,6 +162,7 @@ const UpsellCheckout = () => {
         clearInterval(interval);
 
         const handlerId = ++registrationSeq.current;
+        walletElRef.current = el;
         el.registerWalletsHandler(async (event) => {
           console.log(`⚡ [SaveCard] wallets handler #${handlerId} FIRED — if you see more than one of these for a single tap, listeners have leaked`);
           // This component sets displayExpressWalletsOnly via payment-to-display,
@@ -214,8 +222,16 @@ const UpsellCheckout = () => {
       } else if (walletsHandlerRegistered.current) {
         walletsHandlerRegistered.current = false;
         try {
-          document.getElementById('flow-single-checkout')?.unregisterWalletHandler?.();
-          console.log('🧹 [SaveCard] wallets handler unregistered');
+          const registeredEl = walletElRef.current;
+          const liveEl = document.getElementById('flow-single-checkout');
+          if (registeredEl && liveEl && liveEl !== registeredEl) {
+            console.warn(
+              '[SaveCard] the element in the DOM is NOT the one we registered on — unregistering by id here would have aborted the wrong AbortController and leaked the listener'
+            );
+          }
+          registeredEl?.unregisterWalletHandler?.();
+          walletElRef.current = null;
+          console.log('🧹 [SaveCard] wallets handler unregistered (on the captured element)');
         } catch (err) {
           console.warn('[SaveCard] wallets handler unregister failed:', err);
         }
