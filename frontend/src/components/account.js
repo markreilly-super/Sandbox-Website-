@@ -148,6 +148,7 @@ const AccountPage = () => {
       title: 'Secure Checkout',
       amount: 15000,
       hidePostcode: false,
+      preferNativeActions: true,
     };
   });
 
@@ -604,6 +605,21 @@ const AccountPage = () => {
             onChange={e => setConfig({ ...config, amount: Math.round(parseFloat(e.target.value || 0) * 100) })}
           />
         </div>
+        <label style={labelStyle}>preferNativeActions</label>
+        <select
+          style={inputStyle}
+          value={config.preferNativeActions === false ? 'false' : 'true'}
+          onChange={e => setConfig({ ...config, preferNativeActions: e.target.value === 'true' })}
+        >
+          <option value="true">true (default) — complete inline</option>
+          <option value="false">false — omit the flag, redirect</option>
+        </select>
+        <p style={{ margin: '-8px 0 14px', fontSize: '11px', color: '#888' }}>
+          Sent on <code>/proceed</code> for express wallet payments. True returns a
+          <code>nativeNextAction</code> handed to <code>handleNextAction()</code>. False omits
+          the flag entirely, which is the flow the Express Wallets docs describe and
+          redirects to the hosted page.
+        </p>
         <label style={labelStyle}>Hide Postcode</label>
         <select
           style={inputStyle}
