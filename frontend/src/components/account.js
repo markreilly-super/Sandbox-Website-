@@ -648,9 +648,11 @@ const AccountPage = () => {
           attribute entirely rather than sending <code>"false"</code>.
         </p>
         <p style={{ margin: '0 0 14px', padding: '8px 10px', borderRadius: '6px', backgroundColor: '#fff8e1', border: '1px solid #ffc107', fontSize: '11px' }}>
-          No <code>hide-</code> prefixed attribute exists in the v2 test or production
-          bundles as of 27 Nov 2026, so this currently has no visible effect. The wiring
-          is here ready for the SDK to implement it.
+          No <code>hidePostcode</code> prop appears in the v2 test or production
+          webcomponents bundles as of 27 Nov 2026, against 13 occurrences of
+          <code>displayAuth</code> in the same file, so this may have no visible effect
+          yet. Kebab attributes are camelCased at runtime, so the wiring itself matches
+          how <code>payment-methods-order</code> reaches the component.
         </p>
         {!config.preSelectedPaymentMethod && (
           <p style={{ margin: '0 0 12px', padding: '8px 10px', borderRadius: '6px', backgroundColor: '#fff8e1', border: '1px solid #ffc107', fontSize: '11px' }}>
