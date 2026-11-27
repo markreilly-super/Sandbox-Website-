@@ -198,6 +198,8 @@ const DropdownCheckout = () => {
                 ? { 'payment-methods-order': sdkConfig.paymentMethodsOrder } : {})}
               {...(sdkConfig.preSelectedPaymentMethod
                 ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
+              {...(sdkConfig.hidePostcode
+                ? { 'hide-postcode': 'true' } : {})}
               support-express-wallets="true"
             />
 

@@ -147,6 +147,7 @@ const AccountPage = () => {
       preSelectedPaymentMethod: 'CARD',
       title: 'Secure Checkout',
       amount: 15000,
+      hidePostcode: false,
     };
   });
 
@@ -603,6 +604,24 @@ const AccountPage = () => {
             onChange={e => setConfig({ ...config, amount: Math.round(parseFloat(e.target.value || 0) * 100) })}
           />
         </div>
+        <label style={labelStyle}>Hide Postcode</label>
+        <select
+          style={inputStyle}
+          value={config.hidePostcode ? 'true' : 'false'}
+          onChange={e => setConfig({ ...config, hidePostcode: e.target.value === 'true' })}
+        >
+          <option value="false">false (default — attribute omitted)</option>
+          <option value="true">true — send hide-postcode="true"</option>
+        </select>
+        <p style={{ margin: '-8px 0 14px', fontSize: '11px', color: '#888' }}>
+          Sent on <code>&lt;super-checkout&gt;</code> as <code>hide-postcode</code>. False omits the
+          attribute entirely rather than sending <code>"false"</code>.
+        </p>
+        <p style={{ margin: '0 0 14px', padding: '8px 10px', borderRadius: '6px', backgroundColor: '#fff8e1', border: '1px solid #ffc107', fontSize: '11px' }}>
+          No <code>hide-</code> prefixed attribute exists in the v2 test or production
+          bundles as of 27 Nov 2026, so this currently has no visible effect. The wiring
+          is here ready for the SDK to implement it.
+        </p>
         {!config.preSelectedPaymentMethod && (
           <p style={{ margin: '0 0 12px', padding: '8px 10px', borderRadius: '6px', backgroundColor: '#fff8e1', border: '1px solid #ffc107', fontSize: '11px' }}>
             With no pre-selected method, a sole payment method renders unlabelled and

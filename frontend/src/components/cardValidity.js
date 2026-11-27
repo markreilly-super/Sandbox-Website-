@@ -409,6 +409,8 @@ const CardValidityCheckout = () => {
                 ? { 'payment-methods-order': sdkConfig.paymentMethodsOrder } : {})}
               {...(sdkConfig.preSelectedPaymentMethod
                 ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
+              {...(sdkConfig.hidePostcode
+                ? { 'hide-postcode': 'true' } : {})}
             />
 
             {isSdkReady && (
