@@ -59,19 +59,15 @@ const CheckoutPage = () => {
   // The wallet sheet's amount comes from the component's amount attribute and
   // is fixed once the sheet opens. This sends a different amount on /proceed,
   // so the two can be made to disagree deliberately.
-  const [walletProceedAmount, setWalletProceedAmount] = useState('');
 
   // Request inline 3DS. With it, /proceed returns a nativeNextAction to be
   // resolved on the component instead of an immediately-usable redirectUrl.
-  const [preferNativeActions, setPreferNativeActions] = useState(false);
+  // Set in Account settings, matching the other SDK options.
+  const [preferNativeActions] = useState(() => {
+    const saved = localStorage.getItem('sdk_config');
+    return saved ? JSON.parse(saved).preferNativeActions !== false : true;
+  });
 
-  // Per the docs, submit({ amount }) updates what the component charges
-  // without re-rendering it — unlike changing the amount attribute, which
-  // refetches the session. Blank means send no amount at all.
-  const [submitAmount, setSubmitAmount] = useState('');
-  // Whether /proceed is told about the new amount. Leaving it off reproduces
-  // the component/proceed mismatch that returns an error.
-  const [matchProceedAmount, setMatchProceedAmount] = useState(true);
 
   const [sdkConfig, setSdkConfig] = useState(() => {
     const saved = localStorage.getItem('sdk_config');
@@ -97,11 +93,6 @@ const CheckoutPage = () => {
   // Always holds the latest billing details for the wallets handler closure
   const billingDetailsRef = useRef(billingDetails);
   useEffect(() => { billingDetailsRef.current = billingDetails; }, [billingDetails]);
-
-  // Same reason: the wallets handler is registered once per session, so it
-  // would otherwise capture whatever the override was at registration time.
-  const walletProceedAmountRef = useRef('');
-  useEffect(() => { walletProceedAmountRef.current = walletProceedAmount; }, [walletProceedAmount]);
 
   const walletsListenerAdded = useRef(false);
 
@@ -161,13 +152,8 @@ const CheckoutPage = () => {
           console.log('[Wallets] handler fired — sheet already resolved; calling /proceed next');
           try {
             const bd = billingDetailsRef.current;
-            const walletOverride = parseInt(walletProceedAmountRef.current, 10);
-            const walletAmount = Number.isFinite(walletOverride) && walletOverride > 0
-              ? walletOverride
-              : sdkConfig.amount;
-            console.log('[Wallets] sheet amount:', sdkConfig.amount,
-                        '| proceed amount:', walletAmount,
-                        walletAmount === sdkConfig.amount ? '(match)' : '(MISMATCH)');
+            const walletAmount = sdkConfig.amount;
+            console.log('[Wallets] proceed amount:', walletAmount);
             const response = await fetch(`${API_BASE}/checkout-sessions/${checkoutSessionId}/proceed`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -229,9 +215,6 @@ const CheckoutPage = () => {
     setErrorMessage('');
 
     try {
-      const override = parseInt(submitAmount, 10);
-      const useOverride = Number.isFinite(override) && override > 0;
-
       const submitArgs = {
         customerInformation: {
           firstName: billingDetails.firstName,
@@ -239,10 +222,8 @@ const CheckoutPage = () => {
           email: billingDetails.email,
           phoneNumber: billingDetails.phoneNumber,
         },
-        ...(useOverride ? { amount: override } : {}),
       };
-      console.log('[Submit] component amount:', sdkConfig.amount,
-                  '| submit() amount:', useOverride ? override : '(not sent)');
+      console.log('[Submit] component amount:', sdkConfig.amount);
 
       const result = await window.superCheckout.submit(submitArgs);
 
@@ -260,7 +241,7 @@ const CheckoutPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
+          amount: sdkConfig.amount,
           firstName: billingDetails.firstName,
           lastName: billingDetails.lastName,
           email: billingDetails.email,
@@ -277,9 +258,7 @@ const CheckoutPage = () => {
       console.log('[Proceed] HTTP', response.status, 'response:', proceedData);
       console.log('[Proceed] keys:', Object.keys(proceedData));
       console.log('[Proceed] nativeNextAction present:', !!proceedData.nativeNextAction);
-      console.log('[Submit] proceed amount:',
-                  (useOverride && matchProceedAmount) ? override : sdkConfig.amount,
-                  '| HTTP', response.status);
+      console.log('[Submit] proceed amount:', sdkConfig.amount, '| HTTP', response.status);
       console.log("Proceed Response Error: " + proceedData.detail)
       console.log("Proceed Response Redirect URL: " + proceedData.redirectUrl)
       console.log("Proceed Response Decline Reason: " + proceedData.extensions?.issues?.declineReason)
@@ -372,71 +351,6 @@ const CheckoutPage = () => {
               {...(sdkConfig.preSelectedPaymentMethod
                 ? { 'pre-selected-payment-method': sdkConfig.preSelectedPaymentMethod } : {})}
             />
-
-            {isSdkReady && (
-              <div style={{ marginTop: '22px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0' }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
-                  <code>submit({'{ amount }'})</code> — update the amount at submit time
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#666' }}>minor units</span>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder={`blank = don't send (component has ${sdkConfig.amount})`}
-                    value={submitAmount}
-                    onChange={e => setSubmitAmount(e.target.value)}
-                    style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #e8e8e8' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
-                    Wallet <code>/proceed</code> amount
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', color: '#666' }}>minor units</span>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder={`blank = same as the sheet (${sdkConfig.amount})`}
-                      value={walletProceedAmount}
-                      onChange={e => setWalletProceedAmount(e.target.value)}
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px', fontFamily: 'monospace' }}
-                    />
-                  </div>
-                  <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#666' }}>
-                    The Apple Pay / Google Pay sheet always charges the component's
-                    amount ({sdkConfig.amount}) and cannot be changed after mount. This
-                    changes only what <code>/proceed</code> sends, so the two can be made
-                    to disagree on purpose.
-                  </p>
-                </div>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555', marginBottom: '6px' }}>
-                  <input
-                    type="checkbox"
-                    checked={preferNativeActions}
-                    onChange={e => setPreferNativeActions(e.target.checked)}
-                  />
-                  Send <code>preferNativeActions: true</code> — keep 3DS inline
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#555' }}>
-                  <input
-                    type="checkbox"
-                    checked={matchProceedAmount}
-                    onChange={e => setMatchProceedAmount(e.target.checked)}
-                  />
-                  Send the same amount on <code>/proceed</code>
-                </label>
-                <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#666' }}>
-                  {!submitAmount
-                    ? 'No amount is sent to submit() — the component charges its own amount.'
-                    : matchProceedAmount
-                      ? 'Component and /proceed will agree.'
-                      : 'Deliberate mismatch: the component charges the new amount while /proceed sends the original.'}
-                </p>
-              </div>
-            )}
 
             {isSdkReady && (
               <button
