@@ -71,11 +71,6 @@ const UpsellCheckout = () => {
   // via handleNextAction; false omits the flag entirely, which is the flow the
   // Express Wallets docs describe and is expected to redirect to the hosted page.
   const [preferNativeActions, setPreferNativeActions] = useState(true);
-  // Deliberate break, for reproducing the duplicate-/proceed bug. registerWalletsHandler
-  // replaces its AbortController without aborting the previous one, so a re-register
-  // that is not paired with unregisterWalletHandler orphans the old listener on window
-  // with nothing left to abort it. Each orphan fires its own /proceed.
-  const [skipUnregister, setSkipUnregister] = useState(false);
   const [checkoutAmount, setCheckoutAmount] = useState(PRODUCT.price);
   const [isCardValid, setIsCardValid] = useState(false);
   const [supportCreditPopup] = useState(() => localStorage.getItem('super_credit_popup') !== 'false');
@@ -87,17 +82,8 @@ const UpsellCheckout = () => {
   // Always holds the latest session/customer/amount for the wallets handler closure
   const walletCtxRef = useRef({});
   const walletsHandlerRegistered = useRef(false);
-  // Read by the effect cleanup, which closes over its own run's values.
-  const skipUnregisterRef = useRef(false);
   // Labels each registration so the console shows which handler fired.
   const registrationSeq = useRef(0);
-  // The exact element we registered on. Re-entering the flow mints a new
-  // checkout session, and the component is keyed on the token, so React swaps
-  // in a fresh element before this effect's cleanup runs. Looking the element
-  // up by id at teardown therefore finds the NEW one, and aborting its (empty)
-  // AbortController leaves the old listener on window with nothing able to
-  // remove it. Unregister on the reference, never on a fresh query.
-  const walletElRef = useRef(null);
 
   const handleProceedResponse = async (proceedData, el, label) => {
     console.log(`[${label}] proceed response:`, proceedData);
@@ -119,10 +105,6 @@ const UpsellCheckout = () => {
     setError(proceedData.detail || 'No redirect URL returned.');
   };
 
-
-  useEffect(() => {
-    skipUnregisterRef.current = skipUnregister;
-  }, [skipUnregister]);
 
   useEffect(() => {
     walletCtxRef.current = { checkoutSessionId, customerId, checkoutAmount, futureUsage, preferNativeActions };
@@ -162,7 +144,6 @@ const UpsellCheckout = () => {
         clearInterval(interval);
 
         const handlerId = ++registrationSeq.current;
-        walletElRef.current = el;
         el.registerWalletsHandler(async (event) => {
           console.log(`⚡ [SaveCard] wallets handler #${handlerId} FIRED — if you see more than one of these for a single tap, listeners have leaked`);
           // This component sets displayExpressWalletsOnly via payment-to-display,
@@ -208,34 +189,15 @@ const UpsellCheckout = () => {
       }
     }, 500);
 
-    // The SDK attaches the handler as a window listener and overwrites its
-    // AbortController on each register, so an unpaired re-register leaks a
-    // listener that can never be removed — and each extra listener fires
-    // another /proceed. Always unregister on cleanup.
+    // No unregister on teardown: merchants generally do not call
+    // unregisterWalletHandler either, so the sandbox mirrors what they ship.
+    // registerWalletsHandler replaces its AbortController without aborting the
+    // previous one, so each re-entry leaves another listener on window that
+    // nothing can remove, and one wallet tap fires /proceed once per listener.
+    // The numbered handler logs make that visible rather than silent.
     return () => {
       clearInterval(interval);
-      if (walletsHandlerRegistered.current && skipUnregisterRef.current) {
-        walletsHandlerRegistered.current = false;
-        console.warn(
-          '⚠️ [SaveCard] skipping unregisterWalletHandler() on purpose — the listener on window is now orphaned and can never be removed. Re-entering this flow will add another.'
-        );
-      } else if (walletsHandlerRegistered.current) {
-        walletsHandlerRegistered.current = false;
-        try {
-          const registeredEl = walletElRef.current;
-          const liveEl = document.getElementById('flow-single-checkout');
-          if (registeredEl && liveEl && liveEl !== registeredEl) {
-            console.warn(
-              '[SaveCard] the element in the DOM is NOT the one we registered on — unregistering by id here would have aborted the wrong AbortController and leaked the listener'
-            );
-          }
-          registeredEl?.unregisterWalletHandler?.();
-          walletElRef.current = null;
-          console.log('🧹 [SaveCard] wallets handler unregistered (on the captured element)');
-        } catch (err) {
-          console.warn('[SaveCard] wallets handler unregister failed:', err);
-        }
-      }
+      walletsHandlerRegistered.current = false;
     };
   }, [step, sessionToken]);
 
@@ -725,34 +687,6 @@ const UpsellCheckout = () => {
               {preferNativeActions
                 ? 'Express wallet payments complete inline — /proceed returns a nativeNextAction which is handed to handleNextAction().'
                 : 'The flag is omitted from /proceed entirely, reproducing the flow as the Express Wallets docs describe it. Expected to return a redirectUrl and bounce to the hosted page.'}
-            </p>
-          </div>
-
-          <div style={{ marginBottom: '24px', padding: '12px 14px', borderRadius: '10px', backgroundColor: skipUnregister ? '#fff4e5' : '#f9f9f9', border: '1px solid', borderColor: skipUnregister ? '#e8a33d' : '#e0e0e0' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
-              Skip <code>unregisterWalletHandler()</code>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              {[false, true].map(v => (
-                <button
-                  key={String(v)}
-                  onClick={() => setSkipUnregister(v)}
-                  style={{
-                    padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
-                    fontFamily: 'monospace', border: '1px solid',
-                    borderColor: skipUnregister === v ? '#000' : '#ddd',
-                    backgroundColor: skipUnregister === v ? '#000' : '#fff',
-                    color: skipUnregister === v ? '#fff' : '#333',
-                  }}
-                >
-                  {String(v)}
-                </button>
-              ))}
-            </div>
-            <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>
-              {skipUnregister
-                ? 'Cleanup no longer unregisters. Go \u2190 Back and re-enter this flow once per extra listener, then pay once \u2014 each orphaned handler fires its own /proceed.'
-                : 'Correct behaviour: the handler is unregistered on teardown, so re-entering this flow replaces it rather than stacking another.'}
             </p>
           </div>
 
