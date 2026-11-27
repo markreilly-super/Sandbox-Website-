@@ -66,7 +66,13 @@ const UpsellCheckout = () => {
   const [customerId, setCustomerId] = useState(null);
   const [cardLast4, setCardLast4] = useState(null);
   const [isSingleSdkReady, setIsSingleSdkReady] = useState(false);
-  const [displayAuth, setDisplayAuth] = useState(false);
+  // display-auth on the component, set in Account settings. False hides Super's
+  // mobile-number login beside the payment methods. Absent from sdk_config means
+  // false, which is what this flow did before the setting existed.
+  const [displayAuth] = useState(() => {
+    const saved = localStorage.getItem('sdk_config');
+    return saved ? JSON.parse(saved).displayAuth === true : false;
+  });
   // preferNativeActions on /proceed, set in Account settings. True completes the
   // wallet payment inline via handleNextAction; false omits the flag entirely,
   // which is the flow the Express Wallets docs describe and redirects to the
@@ -451,21 +457,6 @@ const UpsellCheckout = () => {
         </div>
         <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Payment Display</h1>
         <p style={{ color: '#666', marginBottom: '24px', fontSize: '15px' }}>Choose which payment method to show in the checkout.</p>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px', padding: '14px 18px', backgroundColor: '#f9f9f9', border: '1px solid #e0e0e0', borderRadius: '10px', maxWidth: '360px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flex: 1, fontSize: '14px', fontWeight: '600' }}>
-            <input
-              type="checkbox"
-              checked={displayAuth}
-              onChange={e => setDisplayAuth(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            displayAuth
-          </label>
-          <span style={{ fontSize: '12px', fontFamily: 'monospace', backgroundColor: displayAuth ? '#e8f5e9' : '#fff', color: displayAuth ? '#2e7d32' : '#888', border: `1px solid ${displayAuth ? '#a5d6a7' : '#e0e0e0'}`, padding: '2px 10px', borderRadius: '4px', fontWeight: '600' }}>
-            {displayAuth ? 'true' : 'false'}
-          </span>
-        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', maxWidth: '800px' }}>
           {DISPLAY_OPTIONS.map(opt => (

@@ -149,6 +149,7 @@ const AccountPage = () => {
       amount: 15000,
       hidePostcode: false,
       preferNativeActions: true,
+      displayAuth: false,
     };
   });
 
@@ -605,6 +606,19 @@ const AccountPage = () => {
             onChange={e => setConfig({ ...config, amount: Math.round(parseFloat(e.target.value || 0) * 100) })}
           />
         </div>
+        <label style={labelStyle}>display-auth</label>
+        <select
+          style={inputStyle}
+          value={config.displayAuth === true ? 'true' : 'false'}
+          onChange={e => setConfig({ ...config, displayAuth: e.target.value === 'true' })}
+        >
+          <option value="false">false (default) — hide the login</option>
+          <option value="true">true — show Super's 1-click login</option>
+        </select>
+        <p style={{ margin: '-8px 0 14px', fontSize: '11px', color: '#888' }}>
+          Set on the component as <code>display-auth</code>. False hides the mobile-number
+          login shown beside the payment methods.
+        </p>
         <label style={labelStyle}>preferNativeActions</label>
         <select
           style={inputStyle}
